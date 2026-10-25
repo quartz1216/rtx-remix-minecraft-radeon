@@ -106,11 +106,19 @@ def checkPackageSourceHomogeneity = { ->
 //   - Strip dxvk PDBs (~100MB), keep remixbridge.pdb (small, useful for debugging)
 //   - Drop NvRemixBridge.exe / .pdb (32-bit game bridge, unused in MC Java;
 //     avoids naming confusion with remixbridge.dll, our JNI shim)
+//   - Drop the DLSS / NGX libraries (nvngx_dlss*.dll). NVIDIA licenses them
+//     only for systems with NVIDIA GPUs, and this fork's packages target
+//     Radeon. The runtime falls back to its other upscalers without them.
 ext.sdkExclusions = { details ->
     def name = details.name
     if (name == 'NvRemixBridge.exe' || name == 'NvRemixBridge.pdb') return true
     if (name.endsWith('.pdb') && name != 'remixbridge.pdb') return true
+    if (isDlssLibrary(name)) return true
     return false
+}
+
+static boolean isDlssLibrary(String name) {
+    return name.toLowerCase(Locale.ROOT) ==~ /nvngx_dlss[^\/]*\.dll/
 }
 
 base {
@@ -613,6 +621,11 @@ def verifyPackageJarTask = tasks.register('verifyPackageJar') {
             // interpreter or the USD Python bindings in the payload would be unused
             // code that binary vulnerability scanners flag against the release.
             def pythonEntry = ~/(?i)native\/remix-sdk-[^\/]+\/(.*\/)?([^\/]*python[^\/]*\.dll|[^\/]*\.(pyd|pyc)|python\d*(\.\d+)?\/.*)/
+            def dlssOffender = entryNames.find { it.startsWith('native/remix-sdk-') && isDlssLibrary(it.tokenize('/').last()) }
+            if (dlssOffender != null) {
+                throw new GradleException(
+                    "Distributable JAR must not contain the NVIDIA-only DLSS libraries: ${dlssOffender}")
+            }
             def pythonOffender = entryNames.find { it ==~ pythonEntry }
             if (pythonOffender != null) {
                 throw new GradleException(

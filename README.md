@@ -51,8 +51,10 @@ runtime bugs can only be worked around from the mod.
 The upstream runtime carries components that are licensed or built only for
 NVIDIA GPUs: DLSS (including Ray Reconstruction and Frame Generation), the
 Neural Radiance Cache, Reflex, RTX IO, Nsight Aftermath, and the CUDA runtime.
-Radeon builds of this fork do not ship or use them, and need vendor-neutral
-alternatives where a feature depends on them. See
+The goal is for Radeon builds of this fork not to ship or use them, with
+vendor-neutral alternatives where a feature depends on them. So far the
+packaged JAR leaves out the DLSS libraries; the other components still ship
+with the runtime. See
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the upstream inventory.
 
 ## What upstream does
