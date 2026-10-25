@@ -36,6 +36,12 @@ version those are:
 - NVIDIA Nsight Aftermath
 - NVIDIA CUDA runtime and NVRTC
 
+This fork's packaged JARs leave out the DLSS libraries (`nvngx_dlss.dll`,
+`nvngx_dlssd.dll`, `nvngx_dlssg.dll`, `nvngx_dlssnr.dll`): NVIDIA licenses the
+DLSS and NGX SDKs only for systems with NVIDIA GPUs, and the packages target
+Radeon. `build.gradle` excludes them and `verifyPackageJar` rejects a JAR that
+contains one. The developer launch still stages the full pinned runtime.
+
 That list names the redistributed packages; the license-text entries below
 also enumerate the open-source code compiled into them, such as Dear ImGui,
 xxHash, and zlib. The exact set moves with the pinned runtime version. The
