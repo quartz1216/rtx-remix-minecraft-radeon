@@ -124,6 +124,7 @@ their distance.
 |---|---|---|
 | `rtxremix.entity.meshCache.maxEntries` | Pooled entity meshes kept for reuse | `RemixEntitySubmitter` |
 | `rtxremix.dynamicTextureCache.maxEntries` | Entries in the dynamic texture cache that serves skins and glyph pages | `DynamicTextureCache` |
+| `rtxremix.texture.cpuAtlasMips` | Build the block atlas albedo, roughness, and metallic mip chains on the CPU and load them from DDS files under `rtx-remix-cache/atlas/`. The runtime's GPU mip pass leaves the lower levels unwritten on AMD, which turns distant terrain mirror-like or black. Set to false to restore runtime-generated mips | `BlockTextureManager` |
 | `rtxremix.directBufferPool.maxBytes` | Bytes of idle direct buffers kept pooled. 0 disables pooling | `DirectBufferPool` |
 | `rtxremix.waterRapids.spawnBudgetPerTick` | Foam and mist particles spawned per tick near fast water. 0 turns the effect off | `WaterRapidParticleSpawner` |
 | `rtxremix.particles.fastAirCollision` | Take a fast path through particle collision when every swept cell is air. Set to false to disable the fast path | `ParticleStateMixin` |
@@ -275,6 +276,7 @@ directory for an installed client. Portable Prism keeps the former at
 | `config/rtxremix.json` | settings screen | Written when a settings screen closes, and deleted when nothing differs from the defaults | Resets every setting |
 | `camera-paths/<world-key>/` | you | Your recordings | Loses them, so keep this one |
 | `benchmark/` | benchmark harness | Trigger file, status heartbeat, results, and screenshots | Safe |
+| `rtx-remix-cache/atlas/` | mod | Block atlas DDS files with CPU-built mips, named by content hash and rewritten when the atlas changes | Safe; rebuilt on the next atlas load |
 | `saves/<world>/rtx-remix/confs/` | map author | Read when you join that world | Part of the map, not of the install |
 | `saves/<world>/data/rtx_remix_zones.dat` | mod, per save | Zone definitions for that world | Loses the zones defined in that world |
 | `logs/latest.log` | game | Where the mod reports what it did and why | Safe |
