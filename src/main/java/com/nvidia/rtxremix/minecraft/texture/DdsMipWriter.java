@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: Copyright (c) 2026 rtx-remix-minecraft-radeon-26.3 contributors
+ * SPDX-FileCopyrightText: Copyright (c) 2026 rtx-remix-minecraft-radeon contributors
  * SPDX-License-Identifier: Apache-2.0
  */
 package com.nvidia.rtxremix.minecraft.texture;

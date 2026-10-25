@@ -6,7 +6,7 @@ This product includes software developed at NVIDIA CORPORATION & AFFILIATES.
 Third-party software distributed with this project is listed, with the
 applicable licenses, in THIRD_PARTY_NOTICES.md.
 
-This repository is an unofficial fork, rtx-remix-minecraft-radeon-26.3,
+This repository is an unofficial fork, rtx-remix-minecraft-radeon,
 which modifies the original work to target AMD Radeon GPUs and Minecraft
 Java Edition 26.3. Modifications are copyright their respective authors,
 are licensed under the Apache License, Version 2.0, and are recorded in this

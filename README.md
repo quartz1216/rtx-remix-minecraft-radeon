@@ -107,7 +107,7 @@ redistribute them.
 ## Contributing
 
 Issues and pull requests are welcome in
-[this fork](https://github.com/quartz1216/rtx-remix-minecraft-radeon-26.3).
+[this fork](https://github.com/quartz1216/rtx-remix-minecraft-radeon).
 Fixes that also apply to upstream's 1.21.1 GeForce build are better sent
 [upstream](https://github.com/NVIDIAGameWorks/rtx-remix-minecraft), which asks
 contributors to sign off each commit with `git commit -s` under the

@@ -11,9 +11,9 @@
         "NVIDIA (original RTX Remix for Minecraft)"
     ],
     "contact": {
-        "homepage": "https://github.com/quartz1216/rtx-remix-minecraft-radeon-26.3",
-        "sources": "https://github.com/quartz1216/rtx-remix-minecraft-radeon-26.3",
-        "issues": "https://github.com/quartz1216/rtx-remix-minecraft-radeon-26.3/issues"
+        "homepage": "https://github.com/quartz1216/rtx-remix-minecraft-radeon",
+        "sources": "https://github.com/quartz1216/rtx-remix-minecraft-radeon",
+        "issues": "https://github.com/quartz1216/rtx-remix-minecraft-radeon/issues"
     },
     "license": "Apache-2.0",
     "environment": "*",
