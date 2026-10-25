@@ -124,7 +124,7 @@ their distance.
 |---|---|---|
 | `rtxremix.entity.meshCache.maxEntries` | Pooled entity meshes kept for reuse | `RemixEntitySubmitter` |
 | `rtxremix.dynamicTextureCache.maxEntries` | Entries in the dynamic texture cache that serves skins and glyph pages | `DynamicTextureCache` |
-| `rtxremix.texture.cpuAtlasMips` | Build the block atlas albedo, roughness, and metallic mip chains on the CPU and load them from DDS files under `rtx-remix-cache/atlas/`. The runtime's GPU mip pass leaves the lower levels unwritten on AMD, which turns distant terrain mirror-like or black. Set to false to restore runtime-generated mips | `BlockTextureManager` |
+| `rtxremix.texture.cpuAtlasMips` | Build the block atlas albedo, roughness, metallic, normal, and height mip chains on the CPU and load them from DDS files under `rtx-remix-cache/atlas/`. Normals are renormalized per level and stored octahedral, heights keep each footprint's maximum. The runtime's GPU mip pass leaves the lower levels unwritten on AMD, which turns distant terrain mirror-like or black and its normals wrong. Set to false to restore runtime-generated mips | `BlockTextureManager` |
 | `rtxremix.directBufferPool.maxBytes` | Bytes of idle direct buffers kept pooled. 0 disables pooling | `DirectBufferPool` |
 | `rtxremix.waterRapids.spawnBudgetPerTick` | Foam and mist particles spawned per tick near fast water. 0 turns the effect off | `WaterRapidParticleSpawner` |
 | `rtxremix.particles.fastAirCollision` | Take a fast path through particle collision when every swept cell is air. Set to false to disable the fast path | `ParticleStateMixin` |

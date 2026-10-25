@@ -22,7 +22,7 @@ shader execution reordering. Known Radeon issues:
 
 | Issue | State |
 |---|---|
-| Distant terrain renders mirror-like or black outside a sphere around the camera, or as noise after a resource reload | Fixed for block terrain. The runtime never writes the lower mip levels it generates on the GPU, so the mod builds the block atlas mips on the CPU instead (`rtxremix.texture.cpuAtlasMips`). Normal and height maps, entity textures, and animated blocks still use runtime-generated mips |
+| Distant terrain renders mirror-like or black outside a sphere around the camera, or as noise after a resource reload | Fixed for block terrain. The runtime never writes the lower mip levels it generates on the GPU, so the mod builds the block atlas mips, normal and height maps included, on the CPU instead (`rtxremix.texture.cpuAtlasMips`). Entity textures and animated blocks still use runtime-generated mips |
 | GPU device loss after switching the upscaler from XeSS to TAA-U | Seen once in five tries |
 | Crash after switching the GBuffer or direct-lighting Raytrace Mode to a raygen (RGS) variant in the developer menu | Reproducible; keep the defaults |
 | The first world load stalls for tens of seconds while shaders compile | The developer launcher discards the pipeline cache on every launch, so the stall repeats |

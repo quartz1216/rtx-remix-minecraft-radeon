@@ -485,9 +485,9 @@ public class BlockTextureManager {
         atlasAlbedo = uploadWithCpuMips(api, "atlas_albedo", albedoRGBA, atlasW, atlasH,
                 TextureFormat.RGBA8_UNORM, TexturePurpose.COLOR);
 
-        RemixTexture normalTex    = hasAnyNormal ? upload(api, "atlas_normal", normalAtlas, atlasW, atlasH,
+        RemixTexture normalTex    = hasAnyNormal ? uploadWithCpuMips(api, "atlas_normal", normalAtlas, atlasW, atlasH,
                 TextureFormat.RGBA8_UNORM, TexturePurpose.NORMAL_DX) : null;
-        RemixTexture heightTex    = hasAnyHeight ? upload(api, "atlas_height", heightAtlas, atlasW, atlasH,
+        RemixTexture heightTex    = hasAnyHeight ? uploadWithCpuMips(api, "atlas_height", heightAtlas, atlasW, atlasH,
                 TextureFormat.R8_UNORM, TexturePurpose.HEIGHTMAP) : null;
         RemixTexture roughnessTex = uploadWithCpuMips(api, "atlas_roughness", roughnessAtlas, atlasW, atlasH,
                 TextureFormat.R8_UNORM, TexturePurpose.DATA);
@@ -1260,10 +1260,17 @@ public class BlockTextureManager {
      * falling back to {@link #upload} when the file cannot be written or loaded.
      * The runtime's GPU mip pass leaves the lower levels of a texture created
      * from memory unwritten on AMD, so distant terrain sampled zeros (mirror-like
-     * roughness and metallic, black diffuse) or stale memory after a reload.
+     * roughness and metallic, black diffuse, flat or garbage normals) or stale
+     * memory after a reload.
+     *
+     * <p>A file is sampled as stored, so this side does the purpose's
+     * processing too: a height map keeps the maximum of each footprint, and a
+     * tangent-space normal map is written in the octahedral encoding the
+     * runtime would have converted it to.
      */
     private RemixTexture uploadWithCpuMips(RemixAPI api, String name, byte[] data, int w, int h,
                                            int fmt, int purpose) {
+        boolean normal = purpose == TexturePurpose.NORMAL_DX || purpose == TexturePurpose.NORMAL_OGL;
         int channels;
         int dxgiFormat;
         if (fmt == TextureFormat.RGBA8_UNORM) {
@@ -1276,7 +1283,12 @@ public class BlockTextureManager {
             channels = 0;
             dxgiFormat = 0;
         }
-        if (!CPU_ATLAS_MIPS || channels == 0 || purpose != TexturePurpose.COLOR && purpose != TexturePurpose.DATA) {
+        boolean supported = switch (purpose) {
+            case TexturePurpose.COLOR, TexturePurpose.DATA, TexturePurpose.HEIGHTMAP -> channels != 0;
+            case TexturePurpose.NORMAL_DX, TexturePurpose.NORMAL_OGL -> channels == 4;
+            default -> false;
+        };
+        if (!CPU_ATLAS_MIPS || !supported) {
             return upload(api, name, data, w, h, fmt, purpose);
         }
 
@@ -1289,7 +1301,13 @@ public class BlockTextureManager {
         try {
             if (!Files.exists(path)) {
                 deleteStaleAtlasDds(dir, name);
-                DdsMipWriter.write(path, data, w, h, channels, dxgiFormat);
+                if (normal) {
+                    DdsMipWriter.writeOctahedralNormals(path, data, w, h, purpose == TexturePurpose.NORMAL_DX);
+                } else {
+                    DdsMipWriter.write(path, data, w, h, channels, dxgiFormat,
+                            purpose == TexturePurpose.HEIGHTMAP ? DdsMipWriter.Filter.MAX
+                                    : DdsMipWriter.Filter.AVERAGE);
+                }
             }
             RemixTexture tex = new RemixTexture(path);
             RemixTextureStore.get().create(tex);
