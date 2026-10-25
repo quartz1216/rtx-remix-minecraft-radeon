@@ -4,6 +4,7 @@
  */
 package com.nvidia.rtxremix.minecraft.light;
 
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +33,10 @@ public final class BlockLightIntensityControls {
             control("conduit", "block.minecraft.conduit"),
             control("light", "block.minecraft.light"),
             control("candles", "rtxremix.setting.blockLights.candles"),
-            control("candle_cakes", "rtxremix.setting.blockLights.candleCakes"));
+            control("candle_cakes", "rtxremix.setting.blockLights.candleCakes"),
+            control(LavaLights.RULE_PATH, "block.minecraft.lava"));
+    /** Controls whose lights section capture emits directly rather than through a block rule. */
+    private static final Set<Identifier> NON_RULE_IDS = Set.of(LavaLights.RULE_ID);
     private static final Map<Identifier, Control> BY_RULE_ID = indexByRuleId();
 
     private BlockLightIntensityControls() {}
@@ -53,11 +57,19 @@ public final class BlockLightIntensityControls {
     }
 
     static void validateBuiltInRules(Set<Identifier> ruleIds) {
-        if (!BY_RULE_ID.keySet().equals(ruleIds)) {
+        Set<Identifier> ruleControls = ruleControlIds();
+        if (!ruleControls.equals(ruleIds)) {
             throw new IllegalStateException(
                     "Block-light controls do not match built-in rules: controls="
-                            + BY_RULE_ID.keySet() + ", rules=" + ruleIds);
+                            + ruleControls + ", rules=" + ruleIds);
         }
+    }
+
+    /** Rule identities of the controls that tune a built-in block rule. */
+    static Set<Identifier> ruleControlIds() {
+        Set<Identifier> ids = new HashSet<>(BY_RULE_ID.keySet());
+        ids.removeAll(NON_RULE_IDS);
+        return ids;
     }
 
     private static Control control(String rulePath, String labelKey) {

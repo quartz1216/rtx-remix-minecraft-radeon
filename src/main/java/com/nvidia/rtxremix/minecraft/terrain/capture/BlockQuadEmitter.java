@@ -6,6 +6,7 @@ package com.nvidia.rtxremix.minecraft.terrain.capture;
 
 import com.nvidia.rtxremix.RemixAPI;
 import com.nvidia.rtxremix.minecraft.light.BlockLightRuleManager;
+import com.nvidia.rtxremix.minecraft.light.LavaLights;
 import com.nvidia.rtxremix.minecraft.texture.BlockTextureManager;
 import com.nvidia.rtxremix.minecraft.light.LightEntry;
 import com.nvidia.rtxremix.minecraft.profiling.ProfileScope;
@@ -98,6 +99,18 @@ public final class BlockQuadEmitter {
     private static final int WATER_TOP_CACHE_WIDTH = SECTION_SIZE + WATER_TOP_CULL_RADIUS * 2;
     private static final int WATER_TOP_CACHE_CELL_COUNT =
             WATER_TOP_CACHE_WIDTH * SECTION_SIZE * WATER_TOP_CACHE_WIDTH;
+
+    // Exposed lava surfaces per LavaLights cell, gathered while the section's
+    // fluids are emitted and turned into one light per cell in finishSection.
+    private static final int LAVA_CELLS_PER_AXIS = SECTION_SIZE / LavaLights.CELL_SIZE;
+    private static final int LAVA_CELL_COUNT = LAVA_CELLS_PER_AXIS * LAVA_CELLS_PER_AXIS;
+    private final int[] lavaCellCount = new int[LAVA_CELL_COUNT];
+    private final float[] lavaCellSumX = new float[LAVA_CELL_COUNT];
+    private final float[] lavaCellSumY = new float[LAVA_CELL_COUNT];
+    private final float[] lavaCellSumZ = new float[LAVA_CELL_COUNT];
+    private boolean anyLavaSurface;
+    private final BlockPos.Mutable lavaCellOrigin = new BlockPos.Mutable();
+
     // BlockState render type is immutable; cache by raw state id to avoid a per-block virtual call.
     private static volatile BlockRenderType[] renderTypeByStateId = new BlockRenderType[0];
 
@@ -214,6 +227,13 @@ public final class BlockQuadEmitter {
 
         writer.beginSection(baseX, baseY, baseZ);
         lights.clear();
+        if (anyLavaSurface) {
+            Arrays.fill(lavaCellCount, 0);
+            Arrays.fill(lavaCellSumX, 0f);
+            Arrays.fill(lavaCellSumY, 0f);
+            Arrays.fill(lavaCellSumZ, 0f);
+            anyLavaSurface = false;
+        }
         topMask = bottomMask = eastMask = westMask = southMask = northMask = 0;
         Arrays.fill(opacity, 0);
         Arrays.fill(blockStateKnown, 0);
@@ -373,6 +393,45 @@ public final class BlockQuadEmitter {
         int lz = ChunkSectionPos.getLocalCoord(pos.getZ());
         cacheLocalFluidState(localIndex(lx, ly, lz), fluidState);
         emitFluidQuads(world, fluidState, lx, ly, lz);
+        if (fluidState.isIn(FluidTags.LAVA)) {
+            gatherLavaSurface(world, fluidState, lx, ly, lz);
+        }
+    }
+
+    /**
+     * Counts a lava block toward its {@link LavaLights} cell when its surface
+     * is open: not under more lava, and not capped by a full opaque block that
+     * would bury the cell's light.
+     */
+    private void gatherLavaSurface(BlockRenderView world, FluidState fluidState,
+                                   int lx, int ly, int lz) {
+        int wx = baseX + lx, wy = baseY + ly, wz = baseZ + lz;
+        FluidState above = getCachedFluidState(world, wx, wy + 1, wz);
+        if (above.getFluid().matchesType(fluidState.getFluid())) return;
+        BlockState aboveState = getCachedBlockState(world, wx, wy + 1, wz);
+        neighborPos.set(wx, wy + 1, wz);
+        if (aboveState.isOpaqueFullCube(world, neighborPos)) return;
+
+        int cell = (lz / LavaLights.CELL_SIZE) * LAVA_CELLS_PER_AXIS + lx / LavaLights.CELL_SIZE;
+        lavaCellCount[cell]++;
+        lavaCellSumX[cell] += wx + 0.5f;
+        lavaCellSumY[cell] += wy + fluidState.getHeight();
+        lavaCellSumZ[cell] += wz + 0.5f;
+        anyLavaSurface = true;
+    }
+
+    private void addLavaLights() {
+        if (!anyLavaSurface) return;
+        for (int cell = 0; cell < LAVA_CELL_COUNT; cell++) {
+            int count = lavaCellCount[cell];
+            if (count == 0) continue;
+            lavaCellOrigin.set(
+                    baseX + (cell % LAVA_CELLS_PER_AXIS) * LavaLights.CELL_SIZE,
+                    baseY,
+                    baseZ + (cell / LAVA_CELLS_PER_AXIS) * LavaLights.CELL_SIZE);
+            lights.add(LavaLights.cell(lavaCellOrigin, count,
+                    lavaCellSumX[cell] / count, lavaCellSumY[cell] / count, lavaCellSumZ[cell] / count));
+        }
     }
 
     /**
@@ -383,6 +442,7 @@ public final class BlockQuadEmitter {
         try (ProfileScope finishScope = ProfileScope.begin("finishSection")) {
             finishScope.blockCount(blockCount).fluidCount(fluidCount);
             SectionMeshData meshData = writer.buildMeshData();
+            addLavaLights();
             SectionBlockData result = new SectionBlockData(
                     sectionPos, meshData, List.copyOf(lights), topMask, bottomMask,
                     eastMask, westMask, southMask, northMask,
