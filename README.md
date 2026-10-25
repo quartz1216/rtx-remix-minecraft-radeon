@@ -10,15 +10,35 @@ that aims to run its real-time path tracing on **AMD Radeon GPUs** and on
 
 ## Status
 
-Work in progress. The fork does not yet run on Radeon or on Minecraft 26.3,
-and there is no release. Until there is, the code and the guides under
-`docs/` describe upstream's behaviour: Minecraft 1.21.1 on a GeForce RTX GPU.
+Work in progress, with no release yet. The mod still targets Minecraft
+1.21.1, and the guides under `docs/` still describe upstream's behaviour on a
+GeForce RTX GPU.
+
+On Radeon, the mod and NVIDIA's pinned runtime already start and path-trace.
+So far this has been tested on an RX 9070 XT only. The runtime detects the AMD
+driver by itself: it switches to AMD's ray tracing modes, defaults to the Low
+preset, and turns off DLSS, the Neural Radiance Cache, opacity micromaps, and
+shader execution reordering. Known Radeon issues:
+
+| Issue | State |
+|---|---|
+| Distant terrain renders mirror-like or black outside a sphere around the camera, or as noise after a resource reload | Fixed for block terrain. The runtime never writes the lower mip levels it generates on the GPU, so the mod builds the block atlas mips on the CPU instead (`rtxremix.texture.cpuAtlasMips`). Normal and height maps, entity textures, and animated blocks still use runtime-generated mips |
+| GPU device loss after switching the upscaler from XeSS to TAA-U | Seen once in five tries |
+| Crash after switching the GBuffer or direct-lighting Raytrace Mode to a raygen (RGS) variant in the developer menu | Reproducible; keep the defaults |
+| The first world load stalls for tens of seconds while shaders compile | The developer launcher discards the pipeline cache on every launch, so the stall repeats |
+| Radeon GPU Detective crash analysis crashes the game | Leave it off for this runtime |
+
+The pinned runtime implements Remix API 0.16 and is built from a dxvk-remix
+branch that NVIDIA has not published. Public dxvk-remix is at API 0.6 and
+lacks functions the mod depends on. Until the matching source is public,
+runtime bugs can only be worked around from the mod.
 
 ## Goals
 
 - **Radeon support.** Run the path tracer on Radeon GPUs with hardware ray
-  tracing, through a dxvk-remix runtime built from source. Most of this work
-  is in the runtime rather than in the mod.
+  tracing. For now that means working around runtime bugs from the mod. Once
+  NVIDIA publishes the matching dxvk-remix source, the fixes move into a
+  runtime built from that source.
 - **Minecraft 26.3.** Port the mod from 1.21.1 to the current Minecraft
   release. The mod hooks deep into vanilla's renderer and chunk pipeline, so
   that is a port of many mixins, not just a version bump.
@@ -59,8 +79,10 @@ Graphics Settings.
 ## Building From Source
 
 The build is unchanged from upstream for now; see
-[Getting Started](docs/GETTING_STARTED.md). It still fetches NVIDIA's pinned
-runtime and needs a GeForce RTX GPU to run what it builds.
+[Getting Started](docs/GETTING_STARTED.md). It fetches NVIDIA's pinned
+runtime, which runs on a GeForce RTX GPU or, with the issues above, on a
+Radeon GPU with hardware ray tracing. The guide's GeForce requirement predates
+this fork.
 
 ## Source And Tooling Layout
 
