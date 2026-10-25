@@ -488,12 +488,12 @@ public class BlockTextureManager {
                 TextureFormat.R8_UNORM, TexturePurpose.DATA);
         RemixTexture metallicTex  = uploadWithCpuMips(api, "atlas_metallic", metallicAtlas, atlasW, atlasH,
                 TextureFormat.R8_UNORM, TexturePurpose.DATA);
-        RemixTexture emissiveTex  = hasAnyEmissive ? upload(api, "atlas_emissive", emissiveAtlas, atlasW, atlasH,
+        RemixTexture emissiveTex  = hasAnyEmissive ? uploadWithCpuMips(api, "atlas_emissive", emissiveAtlas, atlasW, atlasH,
                 TextureFormat.RGBA8_UNORM, TexturePurpose.COLOR) : null;
         atlasEmissive = emissiveTex;
-        RemixTexture sssTex       = hasAnySSS ? upload(api, "atlas_sss", sssThicknessAtlas, atlasW, atlasH,
+        RemixTexture sssTex       = hasAnySSS ? uploadWithCpuMips(api, "atlas_sss", sssThicknessAtlas, atlasW, atlasH,
                 TextureFormat.RGBA8_UNORM, TexturePurpose.DATA) : null;
-        RemixTexture sssAlbedoTex = hasAnySSS ? upload(api, "atlas_sss_albedo",
+        RemixTexture sssAlbedoTex = hasAnySSS ? uploadWithCpuMips(api, "atlas_sss_albedo",
                 sssAlbedoAtlas, atlasW, atlasH, TextureFormat.RGBA8_UNORM, TexturePurpose.DATA) : null;
         atlasNormalTex = normalTex;
         atlasHeightTex = heightTex;
