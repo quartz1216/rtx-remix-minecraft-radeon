@@ -2,15 +2,18 @@
     "schemaVersion": 1,
     "id": "rtx-remix-renderer",
     "version": "${version}",
-    "name": "RTX Remix for Minecraft",
-    "description": "Renders Minecraft through NVIDIA RTX Remix path tracing. NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.",
+    "name": "RTX Remix for Minecraft (Unofficial Radeon Fork)",
+    "description": "Unofficial fork of NVIDIA's RTX Remix for Minecraft, targeting AMD Radeon GPUs. Renders Minecraft through the RTX Remix path tracer. Not affiliated with or endorsed by NVIDIA or AMD. NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.",
     "authors": [
-        "NVIDIA"
+        "quxomiya"
+    ],
+    "contributors": [
+        "NVIDIA (original RTX Remix for Minecraft)"
     ],
     "contact": {
-        "homepage": "https://github.com/NVIDIAGameWorks/rtx-remix-minecraft",
-        "sources": "https://github.com/NVIDIAGameWorks/rtx-remix-minecraft",
-        "issues": "https://github.com/NVIDIAGameWorks/rtx-remix-minecraft/issues"
+        "homepage": "https://github.com/quartz1216/rtx-remix-minecraft-radeon-26.3",
+        "sources": "https://github.com/quartz1216/rtx-remix-minecraft-radeon-26.3",
+        "issues": "https://github.com/quartz1216/rtx-remix-minecraft-radeon-26.3/issues"
     },
     "license": "Apache-2.0",
     "environment": "*",
