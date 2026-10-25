@@ -16,9 +16,7 @@ class BlockLightIntensityControlsTest {
 
     @Test
     void catalogRejectsMissingBuiltInRules() {
-        Set<Identifier> controlledRules = BlockLightIntensityControls.controls().stream()
-                .map(BlockLightIntensityControls.Control::ruleId)
-                .collect(Collectors.toSet());
+        Set<Identifier> controlledRules = BlockLightIntensityControls.ruleControlIds();
 
         assertThrows(
                 IllegalStateException.class,

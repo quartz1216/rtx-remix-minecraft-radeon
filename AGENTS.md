@@ -208,7 +208,12 @@ light. Server-authoritative block-entity state owns the axis parameters and
 anchor tick; clients reconstruct motion from those and synchronized world time.
 
 **Lights.** Block lights are created, updated, and destroyed on the render
-thread under their own budget, from resource-pack rules keyed by block state. A
+thread under their own budget, from resource-pack rules keyed by block state.
+Exposed lava is the exception: section capture gathers open lava surfaces into
+4x4 cells and emits one `LavaLights` sphere per cell, because a per-block rule
+would flood the light list in a lava lake and the emissive surface alone, set
+below its rim, barely lights its surroundings. Its Block Lights slider is the
+one control `BlockLightIntensityControls` exempts from matching a built-in rule. A
 hand-held item whose placed block shows a lit particle gets the same element in
 hand, emitted once the item's pose is on the matrix stack, so first person, the
 hidden shadow model, and other players share one hook. `HeldLightState` is the
