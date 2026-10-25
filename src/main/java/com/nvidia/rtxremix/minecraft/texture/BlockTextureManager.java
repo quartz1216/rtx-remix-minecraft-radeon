@@ -36,7 +36,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -45,6 +49,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.zip.CRC32;
 
 /**
  * Per-sprite texture and material management for Minecraft's block atlas.
@@ -477,16 +482,16 @@ public class BlockTextureManager {
             }
         }
 
-        atlasAlbedo = upload(api, "atlas_albedo", albedoRGBA, atlasW, atlasH,
+        atlasAlbedo = uploadWithCpuMips(api, "atlas_albedo", albedoRGBA, atlasW, atlasH,
                 TextureFormat.RGBA8_UNORM, TexturePurpose.COLOR);
 
         RemixTexture normalTex    = hasAnyNormal ? upload(api, "atlas_normal", normalAtlas, atlasW, atlasH,
                 TextureFormat.RGBA8_UNORM, TexturePurpose.NORMAL_DX) : null;
         RemixTexture heightTex    = hasAnyHeight ? upload(api, "atlas_height", heightAtlas, atlasW, atlasH,
                 TextureFormat.R8_UNORM, TexturePurpose.HEIGHTMAP) : null;
-        RemixTexture roughnessTex = upload(api, "atlas_roughness", roughnessAtlas, atlasW, atlasH,
+        RemixTexture roughnessTex = uploadWithCpuMips(api, "atlas_roughness", roughnessAtlas, atlasW, atlasH,
                 TextureFormat.R8_UNORM, TexturePurpose.DATA);
-        RemixTexture metallicTex  = upload(api, "atlas_metallic", metallicAtlas, atlasW, atlasH,
+        RemixTexture metallicTex  = uploadWithCpuMips(api, "atlas_metallic", metallicAtlas, atlasW, atlasH,
                 TextureFormat.R8_UNORM, TexturePurpose.DATA);
         RemixTexture emissiveTex  = hasAnyEmissive ? upload(api, "atlas_emissive", emissiveAtlas, atlasW, atlasH,
                 TextureFormat.RGBA8_UNORM, TexturePurpose.COLOR) : null;
@@ -677,6 +682,10 @@ public class BlockTextureManager {
     // ====================================================================
 
     private static final String WATER_NORMALS_DDS = "textures/water_normals_flipbook.dds";
+    private static final String ATLAS_DDS_CACHE_DIR = "rtx-remix-cache/atlas";
+    /** Kill switch: {@code -Drtxremix.texture.cpuAtlasMips=false} restores runtime-generated atlas mips. */
+    private static final boolean CPU_ATLAS_MIPS =
+            Boolean.parseBoolean(System.getProperty("rtxremix.texture.cpuAtlasMips", "true"));
     private static final float WATER_TILE_SIZE = 10.0f;
     private static final float DEFAULT_WATER_IOR = 1.33f;
     private static final float DEFAULT_WATER_TRANSMITTANCE_R = 0.6f;
@@ -1245,6 +1254,63 @@ public class BlockTextureManager {
     // ====================================================================
     //  Upload helper
     // ====================================================================
+
+    /**
+     * Uploads an atlas through a DDS file that carries a CPU-built mip chain,
+     * falling back to {@link #upload} when the file cannot be written or loaded.
+     * The runtime's GPU mip pass leaves the lower levels of a texture created
+     * from memory unwritten on AMD, so distant terrain sampled zeros (mirror-like
+     * roughness and metallic, black diffuse) or stale memory after a reload.
+     */
+    private RemixTexture uploadWithCpuMips(RemixAPI api, String name, byte[] data, int w, int h,
+                                           int fmt, int purpose) {
+        int channels;
+        int dxgiFormat;
+        if (fmt == TextureFormat.RGBA8_UNORM) {
+            channels = 4;
+            dxgiFormat = DdsMipWriter.DXGI_FORMAT_R8G8B8A8_UNORM;
+        } else if (fmt == TextureFormat.R8_UNORM) {
+            channels = 1;
+            dxgiFormat = DdsMipWriter.DXGI_FORMAT_R8_UNORM;
+        } else {
+            channels = 0;
+            dxgiFormat = 0;
+        }
+        if (!CPU_ATLAS_MIPS || channels == 0 || purpose != TexturePurpose.COLOR && purpose != TexturePurpose.DATA) {
+            return upload(api, name, data, w, h, fmt, purpose);
+        }
+
+        // The content hash keeps a reload from reusing a texture the runtime
+        // may have cached by path.
+        CRC32 crc = new CRC32();
+        crc.update(data);
+        Path dir = MinecraftClient.getInstance().runDirectory.toPath().resolve(ATLAS_DDS_CACHE_DIR);
+        Path path = dir.resolve(String.format("%s-%dx%d-%08x.dds", name, w, h, crc.getValue()));
+        try {
+            if (!Files.exists(path)) {
+                deleteStaleAtlasDds(dir, name);
+                DdsMipWriter.write(path, data, w, h, channels, dxgiFormat);
+            }
+            RemixTexture tex = new RemixTexture(path);
+            RemixTextureStore.get().create(tex);
+            managedTextures.add(tex);
+            return tex;
+        } catch (IOException | RemixException e) {
+            LOGGER.warn("Falling back to GPU mips for {}: {}", name, e.getMessage());
+            return upload(api, name, data, w, h, fmt, purpose);
+        }
+    }
+
+    private static void deleteStaleAtlasDds(Path dir, String name) {
+        if (!Files.isDirectory(dir)) return;
+        try (DirectoryStream<Path> stale = Files.newDirectoryStream(dir, name + "-*.dds")) {
+            for (Path p : stale) {
+                Files.deleteIfExists(p);
+            }
+        } catch (IOException e) {
+            LOGGER.debug("Could not prune stale {} DDS files: {}", name, e.getMessage());
+        }
+    }
 
     private RemixTexture upload(RemixAPI api, String name, byte[] data, int w, int h, int fmt, int purpose) {
         ByteBuffer buf = DirectBufferPool.acquire(data.length);
