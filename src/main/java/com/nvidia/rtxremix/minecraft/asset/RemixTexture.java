@@ -41,6 +41,11 @@ public class RemixTexture extends RemixAssetBase {
         this.filePath = filePath;
     }
 
+    /** Whether this texture was loaded from a file and so carries mips that a memory patch would not refresh. */
+    public boolean isFileBacked() {
+        return filePath != null;
+    }
+
     @Override
     protected long doCreate(RemixAPI api, long hash) {
         if (filePath != null) {
