@@ -4,9 +4,12 @@ Context for AI coding agents working in this repository.
 
 ## Project Overview
 
-`rtx-remix-minecraft` is a Fabric mod that renders Minecraft 1.21.1 through
-NVIDIA RTX Remix. It captures terrain, entities, particles, sky, and clouds from
-the client and submits them to the Remix runtime as a path-traced scene. The
+`rtx-remix-minecraft` is a NeoForge mod that renders Minecraft 1.21.1 through
+NVIDIA RTX Remix. This branch is the NeoForge port of a Fabric upstream: the
+sources use Mojang names, and mixin class names keep their upstream (Yarn-era)
+names so upstream changes stay easy to carry over. It captures terrain,
+entities, particles, sky, and clouds from the client and submits them to the
+Remix runtime as a path-traced scene. The
 Java facade and JNI bridge are tracked under `rtxremix-java/`; the native
 runtime and the Remix C API come from dxvk-remix. A change often spans all
 three layers.
@@ -58,12 +61,11 @@ on locked DLLs or replace its live configuration. Stop the client or use another
 worktree. Build guards should prevent a silently wrong artifact, as the
 mixed-runtime-source guard does, rather than police checkout cleanliness.
 
-Keep the unconditional tuning arguments in `loom.runs.client.vmArgs` in
-`build.gradle` and `RECOMMENDED_JVM_ARGS` in `packaging/installer.ps1`
+Keep the unconditional tuning arguments in `neoForge.runs.client.jvmArguments`
+in `build.gradle` and `RECOMMENDED_JVM_ARGS` in `packaging/installer.ps1`
 identical, and when `RECOMMENDED_JVM_ARGS` changes, append its outgoing value to
 `PREVIOUS_RECOMMENDED_JVM_ARGS`. Opt-in benchmark and profiling arguments are
-excluded. See
-[JVM Arguments](docs/TUNING.md#jvm-arguments).
+excluded. See [JVM Arguments](docs/TUNING.md#jvm-arguments).
 
 ## Runtime And Install Model
 
@@ -82,22 +84,29 @@ the next launch. A present conf that fails to acquire still prevents renderer
 initialization; the error identifies the file.
 
 Baseline LabPBR textures live in `src/main/resources/assets/` and load through
-Fabric's `fabric` resource pack below user packs. Development setup, `rtx install`,
-and the release installer use `packaging/migrate_resource_packs.ps1` to remove
-their exactly identified legacy baseline copies and migrate existing pack order.
+NeoForge's `mod_resources` pack, which `options.txt` must list directly above
+`vanilla` and below user packs; left out of the list, NeoForge puts it on top.
+Development setup, `rtx install`, and the release installer use
+`packaging/migrate_resource_packs.ps1` to remove their exactly identified
+legacy baseline copies and migrate existing pack order.
 
 ## Architecture
 
-**Orchestration.** `RtxRemixMod` is the Fabric entrypoint: lifecycle hooks, key
-bindings, and the `/rtx` command tree. `RemixRenderer` is the render thread's
-bridge into Remix and owns the frame. Sky textures are generated and published
-on the render thread, branched on the dimension's sky type: the End
-keeps a constant dark dome and a skyless dimension a black one with no sky
-ambient. Thread-safe stores wrap Remix-side meshes, instances, textures,
-materials, and lights over raw `long` handles from the JNI wrapper.
-`JoinBurstHold` keeps vanilla's terrain-download screen up for a bounded wait
-for stable frames after a world join, hiding first-sight mesh, pipeline, and
-BLAS costs without holding the screen indefinitely.
+**Orchestration.** `RtxRemixMod` is the client `@Mod` entrypoint: lifecycle
+hooks, key bindings, and the `/rtx` command tree; `RtxRemixCommonMod` registers
+the synced content (blocks, menus, particle types, the beacon payload) through
+`RegisterEvent` on both sides. NeoForge has no event for several world-render
+stages or for the client's start and stop, so `LevelRenderStagesMixin` and
+`ClientLifecycleMixin` fire `WorldRenderStages` and the lifecycle hooks where
+Fabric's events did. `RemixRenderer` is the render thread's bridge into Remix
+and owns the frame. Sky textures are generated and published on the render
+thread, branched on the dimension's sky type: the End keeps a constant dark dome
+and a skyless dimension a black one with no sky ambient. Thread-safe stores wrap
+Remix-side meshes, instances, textures, materials, and lights over raw `long`
+handles from the JNI wrapper. `JoinBurstHold` keeps vanilla's terrain-download
+screen up for a bounded wait for stable frames after a world join, hiding
+first-sight mesh, pipeline, and BLAS costs without holding the screen
+indefinitely.
 
 **Overlay input.** `RemixInputGate` owns the Minecraft-side capture session for
 the Remix overlays; `KeyboardMixin` and `MouseMixin` route GLFW input through
@@ -254,23 +263,30 @@ diluting the sampler's candidate pool.
   because the volumetric grid reuses the previous frame's radiance and a
   camera-locked emitter would smear into distant geometry (`LightManager`).
 - Ordinary classes must not live in the mixin package (`MixinPackageBoundaryTest`).
+- A mixin into a method NeoForge overloads names the overload by descriptor:
+  NeoForge's extra parameters often come as a new overload the vanilla one
+  delegates to, so a bare name hooks both and runs the handler twice, or fails
+  on the overload whose arguments the handler does not take
+  (`SectionBuilderMixin`, `ChunkRendererRegionMixin`,
+  `MultipartBakedModelMixin`).
 - A mixin that cancels vanilla work replays the GL, fog, and framebuffer state
   its target would have set (`WorldRendererMixin`).
-- Never cancel `WorldRenderer.render()` itself or return early past
-  `setupTerrain`. Remix is hosted inside vanilla's traversal and captures its
+- Never cancel `LevelRenderer.renderLevel()` itself or return early past
+  `setupRender`. Remix is hosted inside vanilla's traversal and captures its
   sub-passes in place. Cancel only replaced draws and preserve their net state
   changes; see [Cancelling Vanilla Render Work](CONTRIBUTING.md#cancelling-vanilla-render-work).
 - A terrain recapture must clear Remix terrain, reload vanilla terrain, and
   explicitly queue the previous built set. Snapshot `builtSections` before
-  `WorldRenderer.reload()` forgets it, then call `recaptureTerrainForRemix`.
+  `LevelRenderer.allChanged()` forgets it, then call `recaptureTerrainForRemix`.
   `RtxRemixMod.rebuildLoadedTerrain()` owns this sequence. Commit settings once
   per transaction, never once per slider step.
 - Schedule world-transition work through `client.execute`, not a flag drained
-  by a world-render hook: those hooks stop when `client.world` is null, so the
+  by a world-render hook: those hooks stop when `client.level` is null, so the
   clear would land in the next world's initialization. Re-check the session
   after an executor hop.
-- `JOIN` and `DISCONNECT` are not paired across server reconfiguration. A join
-  handler must release the previous session's state before acquiring new state.
+- `ClientPlayerNetworkEvent.LoggingIn` and `LoggingOut` are not paired across
+  server reconfiguration. A login handler must release the previous session's
+  state before acquiring new state.
 - Keep terrain budget loops allocation-free and do not time individual native
   calls with additional `System.nanoTime` reads. Reuse `ProfileScope`, the
   loop's deadline read, and clock-free `TerrainNativeCallStats` tallies.
@@ -309,9 +325,10 @@ diluting the sampler's candidate pool.
   `CommandLineRedaction`).
 - Vanilla's shared worker pool and section-builder concurrency stay capped
   (`WorkerPoolCap`, `SectionBuildConcurrency`).
-- Nothing but the render thread reads client light (`World.getLightLevel`,
-  `LightingProvider.get`) while capture is on: the published snapshot is then
-  the engine's live map (`ClientLightSnapshotPolicy`, `LightStorageMixin`).
+- Nothing but the render thread reads client light (`Level.getBrightness`,
+  `LevelLightEngine.getLayerListener`) while capture is on: the published
+  snapshot is then the engine's live map (`ClientLightSnapshotPolicy`,
+  `LightStorageMixin`).
 - There is one overlay toggle path. `RemixInputGate` alone owns the capture
   session. Every open request goes through `RtxRemixMod.openRemixMenu`, and
   every menu the runtime shows or hides reaches the gate through
@@ -352,12 +369,13 @@ diluting the sampler's candidate pool.
 
 ## Integrated JNI Wrapper
 
-`rtxremix-java/` is a Minecraft-agnostic Java facade and JNI shim over the
-RTX Remix C API. It must never import `net.minecraft` or `net.fabricmc`;
-`RemixJavaBoundaryTest.shimSourcesDoNotImportMinecraftOrFabric` enforces this
-boundary across `rtxremix-java/src/`. Keep game-state capture and Fabric
-integration in the mod, not in the shim. Wrapper and affected mod callers
-change in the same pull request.
+`rtxremix-java/` is a Minecraft-agnostic Java facade and JNI shim over the RTX
+Remix C API. It must never import `net.minecraft`, `net.neoforged`, or
+`net.fabricmc`;
+`RemixJavaBoundaryTest.shimSourcesDoNotImportMinecraftOrModLoaders` enforces
+this boundary across `rtxremix-java/src/`. Keep game-state capture and NeoForge
+integration in the mod, not in the shim. Wrapper and affected mod callers change
+in the same pull request.
 
 The wrapper's source of truth, in order, is:
 

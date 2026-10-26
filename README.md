@@ -17,18 +17,20 @@ GeForce release, not this fork.
 
 Download the JAR from this fork's
 [Releases page](https://github.com/quartz1216/rtx-remix-minecraft-radeon/releases).
-It is a single Fabric mod with the RTX Remix runtime bundled, so it needs no
+It is a single NeoForge mod with the RTX Remix runtime bundled, so it needs no
 installer and no Prism Launcher:
 
-1. Install Fabric Loader 0.16.5 or newer for Minecraft Java Edition 1.21.1.
-2. Put the JAR and [Fabric API](https://modrinth.com/mod/fabric-api)
-   `0.116.10+1.21.1` or newer (a 1.21.1 build) in `mods\`.
+1. Install [NeoForge](https://neoforged.net/) 21.1.265 or newer for Minecraft
+   Java Edition 1.21.1.
+2. Put the JAR in `mods\`. NeoForge needs no API mod beside it.
 3. Launch. On first start the mod extracts `remix-sdk\`, `rtx.conf`,
    `textures\`, and `rtx-remix\` into the game directory.
 
-Windows x64 only. Rendering mods such as Sodium, Iris, or OptiFine are not
-compatible. To build the JAR yourself, run
-`.\gradlew.bat package -Parch=win64`; [Getting Started](docs/GETTING_STARTED.md)
+Windows x64 only. Rendering mods such as Sodium (Embeddium), Iris (Oculus), or
+OptiFine are not compatible. Upstream and this fork's earlier releases are
+Fabric mods; this NeoForge build replaces them, not runs beside them. To build
+the JAR yourself, run `.\gradlew.bat package -Parch=win64`;
+[Getting Started](docs/GETTING_STARTED.md)
 covers the toolchain.
 
 ## Status

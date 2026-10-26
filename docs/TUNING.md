@@ -147,26 +147,27 @@ JFR works with any runtime.
 
 ## The Vanilla Worker Pool
 
-The mod sets vanilla's own `max.bg.threads` property at pre-launch, before
-Minecraft creates its shared `Worker-Main` pool.
+Vanilla's own `max.bg.threads` property bounds Minecraft's shared
+`Worker-Main` pool, and the recommended JVM arguments set it to 8.
 
 Section builds, chunk loads, lighting updates, and resource reloads share that
 pool. With Remix capture inline in section builds, a burst of workers contends
 with the render thread for CPU time, so the mod bounds the pool.
 
-`WorkerPoolCap` chooses the smaller of 8 and logical CPUs minus one, with a
-minimum of one. It must run at pre-launch because `net.minecraft.util.Util`
-creates the pool in a static initializer. The section-builder cap alone does
-not limit the other work sharing that pool.
+The pool gets the smaller of 8 and logical CPUs minus one, with a minimum of
+one: vanilla already clamps it to logical CPUs minus one. The cap has to be a
+JVM argument because `net.minecraft.Util` creates the pool in a static
+initializer, which runs before NeoForge constructs the mod. The section-builder
+cap alone does not limit the other work sharing that pool.
 
-The cap is only applied when the property is unset, so `-Dmax.bg.threads=N`
-opts out and keeps your value. `WorkerPoolCap` logs which of the two happened.
+Another `-Dmax.bg.threads=N` keeps your value. `WorkerPoolCap` logs the value
+the pool got, or warns when nothing capped it.
 
 ## Gradle Pass-Throughs
 
 `gradlew` accepts these `-P` properties. Architecture selection applies to any
-task; the rest apply to `runClient`, Fabric's standard Gradle task, and not to
-clients the developer tools launch.
+task; the rest apply to `runClient`, ModDevGradle's standard Gradle task, and
+not to clients the developer tools launch.
 
 | Property | Effect |
 |---|---|
@@ -184,21 +185,20 @@ short commit hash, and a dirty marker to it.
 ## JVM Arguments
 
 A development client and a fresh install share the unconditional tuning
-arguments in `loom.runs.client.vmArgs` in [build.gradle](../build.gradle) and
-`RECOMMENDED_JVM_ARGS` in
-[packaging/installer.ps1](../packaging/installer.ps1). The developer tools
-read `RECOMMENDED_JVM_ARGS` for every launch. Keep those unconditional
-arguments identical in the same commit. Opt-in benchmark and profiling
-arguments, such as the recording flags a benchmark run adds, are excluded: do
-not copy them into every installed client. The installer keeps differing
-existing arguments unless the user accepts replacement, but replaces
-without asking any set an earlier installer wrote, in each form it wrote it. It
-also replaces Prism memory that its record, `rtx-remix-installer.json` in the
-instance folder, shows it wrote, while the user has not changed it. When you
-change `RECOMMENDED_JVM_ARGS`, append the outgoing value to
-`PREVIOUS_RECOMMENDED_JVM_ARGS` beside it so that upgrades recognise it.
-`tools/tests/benchmark/test_installer_prism_jvm.py` checks the list against the
-git history of the installer.
+arguments in `neoForge.runs.client.jvmArguments` in
+[build.gradle](../build.gradle) and `RECOMMENDED_JVM_ARGS` in
+[packaging/installer.ps1](../packaging/installer.ps1). The developer tools read
+`RECOMMENDED_JVM_ARGS` for every launch. Keep those unconditional arguments
+identical in the same commit. Opt-in benchmark and profiling arguments, such as
+the recording flags a benchmark run adds, are excluded: do not copy them into
+every installed client. The installer keeps differing existing arguments unless
+the user accepts replacement, but replaces without asking any set an earlier
+installer wrote, in each form it wrote it. It also replaces Prism memory that
+its record, `rtx-remix-installer.json` in the instance folder, shows it wrote,
+while the user has not changed it. When you change `RECOMMENDED_JVM_ARGS`,
+append the outgoing value to `PREVIOUS_RECOMMENDED_JVM_ARGS` beside it so that
+upgrades recognise it. `tools/tests/benchmark/test_installer_prism_jvm.py`
+checks the list against the git history of the installer.
 
 Prism has no command-line option for JVM arguments, so the developer tools
 write them into the instance's `instance.cfg` on every launch: the recommended

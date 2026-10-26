@@ -180,7 +180,7 @@ checked for instrumentation failures. Java spans mirrored into Tracy must nest:
 a transition-style phase can be a Tracy zone only when every scope opened inside
 it closes before the phase does (the `MinecraftClient.render.*` phases and the
 vanilla profiler mirrors qualify). Spans that cross existing zones, such as the
-Fabric `WorldRender.vanilla.*` events, stay JFR-only and still show up in Tracy
+`WorldRender.vanilla.*` stage phases, stay JFR-only and still show up in Tracy
 as plot lanes through `ProfileScope.plotOnClose(...)`. The enclosing
 `MinecraftClient.render` and `WorldRenderer.render` spans also stay JFR-only:
 each enclosing zone pushes every Java zone one level deeper against

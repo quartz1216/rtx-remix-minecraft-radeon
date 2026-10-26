@@ -128,8 +128,8 @@ selected in Prism's profile.
 
 `resourcePacks` declares the enabled order of the world's own packs in
 `options.txt`, using pack names without `file/` (zip entries may omit `.zip`).
-The runner copies these packs from the fixture's `resourcepacks/` directory
-and enables them after `vanilla` and Fabric's `fabric` mod pack, which supplies
+The runner copies these packs from the fixture's `resourcepacks/` directory and
+enables them after `vanilla` and NeoForge's `mod_resources` pack, which supplies
 the built-in baseline textures, and before the optional art pack. Omitting
 `resourcePacks` enables no world packs. Prefer unpacked folders for clean diffs.
 

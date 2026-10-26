@@ -2,7 +2,7 @@
 
 This guide takes you from a downloaded archive to a path-traced world. It is
 written for players. You do not need development tools, and you do not need to
-install Java, Fabric, or the RTX Remix runtime yourself.
+install Java, NeoForge, or the RTX Remix runtime yourself.
 
 ## What You Need
 
@@ -14,7 +14,7 @@ install Java, Fabric, or the RTX Remix runtime yourself.
 - An internet connection while the installer runs.
 - 16 GB of system memory is recommended.
 
-Java 21, Fabric, and the RTX Remix runtime are installed for you.
+Java 21, NeoForge, and the RTX Remix runtime are installed for you.
 
 ## Before You Start
 
@@ -82,9 +82,9 @@ Microsoft account.
 
 ### Installing Without The Installer
 
-If you already run a Fabric instance for Minecraft 1.21.1 in a launcher of
-your choice, you can install the mod by hand. The instance needs Java 21,
-Fabric Loader 0.16.5 or newer, and Fabric API 0.116.10+1.21.1 or newer.
+If you already run a NeoForge instance for Minecraft 1.21.1 in a launcher of
+your choice, you can install the mod by hand. The instance needs Java 21 and
+NeoForge 21.1.265 or newer; no API mod is needed beside it.
 
 1. Copy the JAR from the archive's `mods\` folder into the instance's `mods\`
    folder. It carries the runtime and its textures and unpacks them into the
@@ -258,7 +258,7 @@ but still preserves existing profiles.
 ## Uninstalling
 
 Run `install.bat` and choose Uninstall. It removes the mod files, such as the
-mod, Fabric API, the runtime, and `rtx.conf`, and then offers to remove the
+mod, the runtime, and `rtx.conf`, and then offers to remove the
 Java, the Prism portable, and the Prism instance it installed for you. Basic
 uninstall leaves your worlds alone, along with any lighting profiles you
 authored under `rtx-remix\`. The optional Prism instance or portable cleanup

@@ -541,10 +541,10 @@ off to measure cold first-visit costs intentionally.
 
 ### Resource Packs
 
-The baseline LabPBR textures ship inside the mod JAR and load through Fabric's
-`fabric` resource pack. The runner lists `vanilla`, then `fabric` in
-`options.txt`, below every `file/` pack. Omitting `fabric` would make Fabric
-append it above user packs.
+The baseline LabPBR textures ship inside the mod JAR and load through
+NeoForge's `mod_resources` pack. The runner lists `vanilla`, then
+`mod_resources` in `options.txt`, below every `file/` pack. Omitting
+`mod_resources` would make NeoForge add it above user packs.
 
 Per-world resource packs override the mod's built-in baseline in their
 configured order. An optional selected art pack is enabled last, so it

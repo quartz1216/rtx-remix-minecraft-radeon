@@ -7,12 +7,12 @@ guide explains failure signatures and the ownership boundaries behind them;
 
 ## World Transitions
 
-Fabric's `ClientPlayConnectionEvents.JOIN` and `DISCONNECT` are not paired.
-`DISCONNECT` fires when the connection closes. A server reconfiguration
-(`EnterReconfigurationS2CPacket`) switches the play handler to a configuration
-handler without closing that connection, clears `client.world`, and fires
-`JOIN` again when play resumes. Modded servers and proxies switching backends
-can do this; the integrated server does not reconfigure.
+NeoForge's `ClientPlayerNetworkEvent.LoggingIn` and `LoggingOut` are not paired.
+`LoggingOut` fires when the connection closes. A server reconfiguration
+(`ClientboundStartConfigurationPacket`) switches the play handler to a
+configuration handler without closing that connection, clears `client.level`,
+and fires `LoggingIn` again when play resumes. Modded servers and proxies
+switching backends can do this; the integrated server does not reconfigure.
 
 The `RtxRemixMod` disconnect cleanup therefore does not run on that path:
 renderer world clear, benchmark and camera session reset, and world conf-layer

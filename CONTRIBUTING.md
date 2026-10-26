@@ -15,7 +15,7 @@ for any change is which repository it belongs in.
   from the package pins in `packman/remix-sdk.packman.xml`.
 - Everything that reads Minecraft state and hands it to Remix lives here: the
   terrain, entity, texture, particle, and cloud pipelines, the gameplay-driven
-  conf layers, the settings screen, and the Fabric mixins that feed them.
+  conf layers, the settings screen, and the mixins that feed them.
 
 Wrapper and mod changes belong in the same pull request. The pinned runtime is
 built from an NVIDIA branch of dxvk-remix whose source is not public yet, so
@@ -37,9 +37,9 @@ API version, and a runtime that predates it loads and then fails.
 
 ## Where To Start Reading
 
-Two classes are the way in. `RtxRemixMod` is the Fabric entrypoint: lifecycle
-hooks, key bindings, and the `/rtx` command tree. `RemixRenderer` is the render
-thread's bridge into Remix, and every frame passes through it.
+Two classes are the way in. `RtxRemixMod` is the client NeoForge entrypoint:
+lifecycle hooks, key bindings, and the `/rtx` command tree. `RemixRenderer` is
+the render thread's bridge into Remix, and every frame passes through it.
 
 From there, read by pipeline rather than by file. Packages are named for what
 they own, so the package holding a problem is usually the package named after
@@ -82,11 +82,12 @@ A change to any one of them without the others produces a JAR that installs a
 broken game directory.
 
 **The JNI shim has no game dependencies.** `rtxremix-java/` must never import
-`net.minecraft` or `net.fabricmc`; `RemixJavaBoundaryTest` enforces the
-boundary. Java-side handles are raw `long` values, not wrapper objects or JNA
-`Pointer`s, and the C API is reached only through JNI, never a JNA interface
-table. Use direct `ByteBuffer`s wherever the native method requires them, and
-document whether buffers must be direct on every new JNI entry point.
+`net.minecraft`, `net.neoforged`, or `net.fabricmc`; `RemixJavaBoundaryTest`
+enforces the boundary. Java-side handles are raw `long` values, not wrapper
+objects or JNA `Pointer`s, and the C API is reached only through JNI, never a
+JNA interface table. Use direct `ByteBuffer`s wherever the native method
+requires them, and document whether buffers must be direct on every new JNI
+entry point.
 
 **An API change crosses the whole boundary.** Keep `StructType.java` constants
 in step with the copied header and native runtime. Update the header, JNI
@@ -211,25 +212,23 @@ permanent contracts.
 Cancel only draws that Remix replaces, such as terrain layers, particles and
 clouds. Do not bypass the outer vanilla traversal: camera, frustum, matrices,
 framebuffers, tick delta, in-place entity capture, section scheduling, and
-`WorldRenderEvents` all come from it. Judge a cancellation by its injection
+`WorldRenderStages` all come from it. Judge a cancellation by its injection
 and state correctness, not only a frame-time delta. A GPU-bound run can hide a
 real render-thread saving.
 
 ### Reading Vanilla Bytecode
 
-The Yarn-named merged JAR Loom already caches is enough for `javap`; generating
-all decompiled sources is not necessary. Read the mappings coordinate in
-`build.gradle` and select its exact cache directory. Old versions remain in
-the cache after a mappings bump. The sibling
-`~/.gradle/caches/fabric-loom/<minecraft-version>/minecraft-merged.jar` is the
-obfuscated merge, not the Yarn-named one.
+ModDevGradle leaves a Mojang-named JAR of Minecraft with NeoForge's patches
+applied under `build/moddev/artifacts/`, and its sources beside it; that is
+what mixins must match, so read it rather than vanilla. NeoForge's patches add
+overloads and parameters to methods the mod hooks, and the decompiled
+`neoforge-<version>-sources.jar` shows where.
 
-For the currently pinned mapping, a Git Bash example is:
+For the currently pinned NeoForge, a Git Bash example is:
 
 ```bash
-merged=~/.gradle/caches/fabric-loom/minecraftMaven/net/minecraft/minecraft-merged
-version=1.21.1-net.fabricmc.yarn.1_21_1.1.21.1+build.3-v2
-javap -p -c -classpath "$merged/$version/minecraft-merged-$version.jar" net.minecraft.client.render.VertexConsumer
+merged=build/moddev/artifacts/neoforge-21.1.265-merged.jar
+javap -p -c -classpath "$merged" com.mojang.blaze3d.vertex.VertexConsumer
 ```
 
 If you need to search all callers of a descriptor, extract the whole JAR into
@@ -242,9 +241,9 @@ the extraction afterwards. Do not leave thousands of class files in the tree.
 
 `Mixing X from ... into net.minecraft...` in `run/logs/debug.log` proves
 registration, not an applied injection or an executed target. The check reads
-Loom's Yarn-named development client, which `runClient`, Fabric's standard
-Gradle task, starts from `run/`. Temporarily add `-Dmixin.debug.export=true` to
-the client `vmArgs` in `build.gradle`, launch `runClient`, and disassemble the
+ModDevGradle's development client, which `runClient` starts from `run/`.
+Temporarily add `-Dmixin.debug.export=true` to the client `jvmArguments` in
+`build.gradle`, launch `runClient`, and disassemble the
 transformed class under
 `run/.mixin.out/class/<package path>/<Class>.class` with `javap -p -c`.
 Classes are exported at load, so a later shutdown crash does not invalidate
@@ -254,9 +253,9 @@ An `@Inject` merges a `handler$<id>$rtx-remix-renderer$<handler name>` method
 and a call at the intended offset: `invokespecial` for a private instance
 handler, `invokestatic` for a static one. If the call is present but does not
 fire, investigate vanilla's frustum, dimension, cloud-mode and weather gates.
-Exports and the classes loaded from `build/classes/` use Yarn names. The
-remapped JAR in `build/libs/` instead embeds intermediary `method_NNNNN` names
-in injection annotations. Remove the diagnostic flag and export afterwards.
+Exports, the classes loaded from `build/classes/`, and the JAR in
+`build/libs/` all use Mojang names; NeoForge runs on them in production too, so
+there is no refmap. Remove the diagnostic flag and export afterwards.
 
 ## Tests
 

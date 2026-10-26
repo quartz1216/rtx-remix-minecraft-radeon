@@ -11,6 +11,20 @@ also part of every mod file name.
 
 ## Unreleased
 
+### Changed
+
+- The mod runs on NeoForge 21.1.265 or newer instead of Fabric. It needs no API
+  mod beside it, and its baseline textures now come through NeoForge's
+  `mod_resources` pack, which the installer and the developer tools keep
+  directly above vanilla and below user packs.
+- The installer sets up NeoForge in Prism and in the Microsoft launcher. An
+  existing Prism instance from a Fabric release switches to NeoForge and drops
+  its Fabric API JARs; the Microsoft launcher gets a NeoForge profile beside
+  any Fabric ones.
+- The recommended JVM arguments gain `-Dmax.bg.threads=8`. NeoForge loads the
+  mod after Minecraft's worker pool exists, so the cap has to come from the
+  launcher; the mod logs a warning when it is missing.
+
 ## 0.1.0 - 2026-10-23
 
 The first public release, a beta.

@@ -148,8 +148,8 @@ their own licenses; it does not redistribute them.
 
 - Minecraft (Mojang Studios), subject to the Minecraft EULA; supplied by the
   player's own installation
-- Fabric Loader and Fabric API (FabricMC), Apache License, Version 2.0;
-  downloaded by the installer from FabricMC's Maven repository
+- NeoForge (The NeoForged project), LGPL-2.1; downloaded by the installer
+  from NeoForged's Maven repository and installed by its own installer
 - Java 21 runtime: Eclipse Temurin (Eclipse Adoptium), GPL-2.0 with the
   Classpath Exception; downloaded by the installer when no suitable JDK is
   present

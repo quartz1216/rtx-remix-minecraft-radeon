@@ -6,8 +6,9 @@ marshals calls through JNI, and loads the separately distributed native runtime
 built from [dxvk-remix](https://github.com/NVIDIAGameWorks/dxvk-remix).
 It does not implement a renderer or interpret application state.
 
-The shim is Minecraft-agnostic. It must never import `net.minecraft` or
-`net.fabricmc`; game integration belongs to the consuming application.
+The shim is Minecraft-agnostic. It must never import `net.minecraft`,
+`net.neoforged`, or `net.fabricmc`; game integration belongs to the consuming
+application.
 The root `RemixJavaBoundaryTest` enforces that dependency boundary.
 
 ## Components

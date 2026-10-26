@@ -58,11 +58,11 @@ type, profile name, ownership, and active flag from `accounts.json`, never its
 tokens.
 
 `rtx.bat install` stages an already-built development mod into an existing
-Fabric game directory, separate from the repository-local launch workflow.
+NeoForge game directory, separate from the repository-local launch workflow.
 Keep its runtime/bridge architecture selection, unchanged-SDK marker, copies of
 `rtx.conf`, the conf payload and the runtime textures, and author-created file
 preservation in `src/rtx_tools/install.py`.
-It must not build, launch Minecraft, or install Fabric dependencies.
+It must not build, launch Minecraft, or install NeoForge.
 
 After editing Python tooling, run `tools\rtx.bat check`. It runs Ruff format
 checks and linting over `src/` and `tests/`, followed by ty type checks.
