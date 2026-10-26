@@ -37,8 +37,12 @@ function Update-ResourcePackOptions {
     $text = [IO.File]::ReadAllText($Path)
     $match = [regex]::Match($text, '(?m)^resourcePacks:[^\r\n]*')
     $packs = if ($match.Success) { @($match.Value.Substring('resourcePacks:'.Length) | ConvertFrom-Json) } else { @() }
-    $ordered = @('vanilla', 'fabric') + @($packs | Where-Object {
-        $_ -cne 'vanilla' -and $_ -cne 'fabric' -and
+    # NeoForge's mod pack carries the mod's baseline textures and must sit
+    # directly above vanilla, below every user pack; left out of the list,
+    # NeoForge adds it on top. 'fabric' is the pack of the earlier,
+    # Fabric-based releases and no longer exists.
+    $ordered = @('vanilla', 'mod_resources') + @($packs | Where-Object {
+        $_ -cne 'vanilla' -and $_ -cne 'mod_resources' -and $_ -cne 'fabric' -and
         (-not $RemoveLegacyEntry -or $_ -cne "file/$LegacyPackName")
     })
     $line = 'resourcePacks:' + (ConvertTo-Json -InputObject $ordered -Compress)

@@ -124,7 +124,8 @@ def prism_form(jvm_args: str) -> str:
 
 RECOMMENDED = installer_literal("RECOMMENDED_JVM_ARGS")
 RECOMMENDED_FOR_PRISM = prism_form(RECOMMENDED)
-MS_PROFILE_KEY = f"fabric-loader-{installer_literal('MC_VERSION')}"
+MS_PROFILE_KEY = installer_literal("NEOFORGE_PROFILE_KEY")
+MS_VERSION_ID = f"neoforge-{installer_literal('NEOFORGE_VERSION')}"
 
 
 def heap_mib(jvm_args: list[str]) -> int:
@@ -224,6 +225,11 @@ PREVIOUS_RECOMMENDED = {
     ),
     "2026-09-03": (
         "-Xmx12G -XX:SoftMaxHeapSize=8G -XX:+UseZGC -XX:+ZGenerational -XX:ZUncommitDelay=30 -Xss1M "
+        "-XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump"
+    ),
+    "2026-10-22": (
+        "-Xmx2G -XX:+UnlockExperimentalVMOptions -XX:+UseG1GC -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 "
+        "-XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M "
         "-XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump"
     ),
 }
@@ -343,11 +349,11 @@ def sync_microsoft(tmp_path: Path) -> SyncMicrosoft:
         answer: str = "no",
         unattended: bool = False,
         next_jvm_args: str | None = None,
-        profile_name: str = "Fabric",
+        profile_name: str = "NeoForge",
     ) -> tuple[dict[str, Any], str]:
-        """The Fabric profile in launcher_profiles.json after the reconcile, from one whose javaArgs are `java_args`,
+        """The NeoForge profile in launcher_profiles.json after the reconcile, from one whose javaArgs are `java_args`,
         or that has none when it is None."""
-        profile = {"lastVersionId": MS_PROFILE_KEY, "name": profile_name, "type": "custom"}
+        profile = {"lastVersionId": MS_VERSION_ID, "name": profile_name, "type": "custom"}
         if java_args is not None:
             profile["javaArgs"] = java_args
         profiles.parent.mkdir(parents=True, exist_ok=True)

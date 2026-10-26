@@ -30,6 +30,6 @@ side = "BOTH"
 [[dependencies.rtx_remix_renderer]]
 modId = "minecraft"
 type = "required"
-versionRange = "[1.21.1,1.21.2)"
+versionRange = "[${minecraftVersion}]"
 ordering = "NONE"
 side = "BOTH"

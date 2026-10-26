@@ -17,10 +17,14 @@ class BuildConfigurationTests(unittest.TestCase):
         build = (REPO_ROOT / "build.gradle").read_text(encoding="utf-8")
         wrapper = (REPO_ROOT / "gradle" / "wrapper" / "gradle-wrapper.properties").read_text(encoding="utf-8")
 
-        loom = re.search(r"id 'fabric-loom' version '([^']+)'", build)
-        if loom is None:
-            self.fail("Fabric Loom version declaration is missing")
-        self.assertNotIn("SNAPSHOT", loom.group(1).upper())
+        moddev = re.search(r"id 'net.neoforged.moddev' version '([^']+)'", build)
+        if moddev is None:
+            self.fail("ModDevGradle version declaration is missing")
+        self.assertNotIn("SNAPSHOT", moddev.group(1).upper())
+        neoforge = re.search(r"(?m)^def neoForgeVersion = '([^']+)'$", build)
+        if neoforge is None:
+            self.fail("NeoForge version declaration is missing")
+        self.assertNotIn("SNAPSHOT", neoforge.group(1).upper())
 
         checksum = re.search(r"(?m)^distributionSha256Sum=([0-9a-f]{64})$", wrapper)
         self.assertIsNotNone(checksum)
@@ -184,13 +188,11 @@ class BuildConfigurationTests(unittest.TestCase):
         self.assertIn("outputs.file(target)", build)
         self.assertIn("file('run/rtx.conf')", build)
 
-    def test_dev_instance_fabric_api_comes_from_the_pinned_dependency(self):
+    def test_the_build_stages_no_fabric_api_for_dev_instances(self):
+        # NeoForge needs no API JAR beside the mod, so dev instances get none.
         build = (REPO_ROOT / "build.gradle").read_text(encoding="utf-8")
-        task = re.search(r"(?ms)^tasks.register\('stageFabricApi', Copy\) \{(.+?)^\}", build)
-        self.assertIsNotNone(task)
-        assert task is not None
-        self.assertIn("into layout.buildDirectory.dir('dev')", task.group(1))
-        self.assertIn("rename { 'fabric-api.jar' }", task.group(1))
+        self.assertNotIn("stageFabricApi", build)
+        self.assertNotIn("fabric-api", build)
         self.assertNotIn("The benchmark CLI passes", build)
 
 

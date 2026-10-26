@@ -157,15 +157,14 @@ def test_install_reports_resource_pack_migration_failure(installation, migration
     assert "Installed to" not in output
 
 
-def test_install_warns_about_missing_fabric_api_without_installing_it(installation, capsys):
+def test_install_needs_no_api_jar_beside_the_mod(installation, capsys):
     _, game = installation
 
     assert run_install(game) == 0
 
     output = capsys.readouterr().out
-    assert f"WARNING: no fabric-api jar in {game / 'mods'}." in output
-    assert "fabric-api >=0.116.10+1.21.1 (https://modrinth.com/mod/fabric-api)" in output
-    assert list((game / "mods").glob("fabric-api-*.jar")) == []
+    assert "WARNING" not in output
+    assert sorted(path.name for path in (game / "mods").iterdir()) == ["rtx-remix-renderer.jar"]
 
 
 @pytest.mark.parametrize("arch", ["win64", "arm64"])

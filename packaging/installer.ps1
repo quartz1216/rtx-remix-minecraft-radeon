@@ -140,19 +140,22 @@ $script:PRISM_INSTANCE_LEGACY_NAMES = @(
 )
 $script:PRISM_PORTABLE_DIR   = Join-Path $env:LOCALAPPDATA 'RtxRemixMinecraft\PrismLauncher'
 $script:MANAGED_JDK_DIR      = Join-Path $env:LOCALAPPDATA 'RtxRemixMinecraft\jdk-21'
-$script:FABRIC_API_VERSION   = '0.116.10+1.21.1'
-$script:FABRIC_LOADER_VER    = '0.16.5'
 $script:MC_VERSION           = '1.21.1'
-$script:FABRIC_INSTALLER_VER = '1.0.1'
-# Fabric installer 1.0.x writes launcher_profiles.json using an MC-only
-# profile key, but the underlying `versions/` directory name (and the
-# profile's inner `lastVersionId` field) still include the loader version.
-# Two distinct strings; keep them both as derived constants so detection
-# logic can't accidentally use one where the other is expected.
-$script:FABRIC_PROFILE_KEY   = "fabric-loader-$($script:MC_VERSION)"
-$script:FABRIC_VERSION_ID    = "fabric-loader-$($script:FABRIC_LOADER_VER)-$($script:MC_VERSION)"
+# KEEP IN SYNC WITH neoForgeVersion in build.gradle.
+$script:NEOFORGE_VERSION     = '21.1.265'
+# The NeoForge installer registers its launcher_profiles.json entry under the
+# install profile's name, while the `versions/` directory (and the profile's
+# inner `lastVersionId` field) carry the NeoForge version. Two distinct
+# strings; keep them both as derived constants so detection logic can't
+# accidentally use one where the other is expected.
+$script:NEOFORGE_PROFILE_KEY = 'NeoForge'
+$script:NEOFORGE_VERSION_ID  = "neoforge-$($script:NEOFORGE_VERSION)"
 # User-facing display label for the MS launcher profile.
-$script:FABRIC_PROFILE_NAME  = 'NVIDIA RTX Remix for Minecraft'
+$script:MS_PROFILE_NAME      = 'NVIDIA RTX Remix for Minecraft'
+# Earlier releases of this mod ran on Fabric and installed this Fabric API
+# JAR; uninstall still removes it, and a Prism instance drops every
+# fabric-api-*.jar when it moves to NeoForge.
+$script:LEGACY_FABRIC_API_JAR = 'fabric-api-0.116.10+1.21.1.jar'
 
 # Fallback Prism version used when all "latest" lookups fail (GitHub API
 # rate-limited AND Atom feed unreachable). Bump periodically as part of a
@@ -213,23 +216,24 @@ $script:PRISM_KNOWN_HASHES = @{
 # To populate: compute against a fresh download with
 #   (Get-FileHash -Algorithm SHA256 <file>).Hash.ToLower()
 # and paste below. Update when bumping the VER constants above.
-$script:FABRIC_INSTALLER_SHA256 = ''
-$script:FABRIC_API_SHA256       = ''
+$script:NEOFORGE_INSTALLER_SHA256 = ''
 
 # Minimum Prism Launcher version we'll install as a fresh portable. Prism
 # 9.0's official release notes tagged the Windows MSVC portable asset as
 # broken and directed users to 9.1. Block 9.0 even if the user pins it.
 $script:PRISM_MIN_PORTABLE_VERSION = '9.1'
 
-# KEEP IN SYNC WITH build.gradle loom.runs.client.vmArgs. Canonical since
+# KEEP IN SYNC WITH build.gradle neoForge.runs.client.jvmArguments. Canonical since
 # install.bat became a thin launcher. The Microsoft launcher profile gets
 # them as written. The Prism instance gets them without their heap sizes
 # (Get-PrismJvmArgs), which reach the game through its memory settings
 # (Get-PrismMemorySettings).
-$script:RECOMMENDED_JVM_ARGS = '-Xmx2G -XX:+UnlockExperimentalVMOptions -XX:+UseG1GC -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M -XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump'
+# -Dmax.bg.threads caps Minecraft's worker pool, which NeoForge creates
+# before the mod can set it (WorkerPoolCap).
+$script:RECOMMENDED_JVM_ARGS = '-Xmx2G -XX:+UnlockExperimentalVMOptions -XX:+UseG1GC -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M -XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump -Dmax.bg.threads=8'
 
 # Every earlier RECOMMENDED_JVM_ARGS, oldest first, exactly as written here:
-# the sets from 2026-04-21, 2026-05-12 and 2026-09-03. Installers wrote each
+# the sets from 2026-04-21, 2026-05-12, 2026-09-03 and 2026-10-22. Installers wrote each
 # set to the Microsoft launcher profile as it is, and to the Prism instance
 # as it is or, once installers left the heap out of Prism's JVM args,
 # without its heap sizes. Sync-JvmArgs replaces any of those forms without
@@ -241,6 +245,7 @@ $script:PREVIOUS_RECOMMENDED_JVM_ARGS = @(
     '-XX:MaxRAMPercentage=100.0 -XX:+UseZGC -XX:+ZGenerational -Xss1M -XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump'
     '-XX:MaxRAMPercentage=100.0 -XX:SoftMaxHeapSize=8G -XX:+UseZGC -XX:+ZGenerational -XX:ZUncommitDelay=30 -Xss1M -XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump'
     '-Xmx12G -XX:SoftMaxHeapSize=8G -XX:+UseZGC -XX:+ZGenerational -XX:ZUncommitDelay=30 -Xss1M -XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump'
+    '-Xmx2G -XX:+UnlockExperimentalVMOptions -XX:+UseG1GC -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M -XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump'
 )
 
 # Prism's own MinMemAlloc default, the instance's -Xms when the JVM args set none.
@@ -273,7 +278,7 @@ $script:PRISM_INSTALLER_RECORD_KEYS = @('JvmArgs', 'OverrideMemory', 'MinMemAllo
 $script:SCRIPT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 # The baseline textures ship inside the mod JAR. This resource pack held them
-# before; an enabled copy above Fabric's mod pack masks the JAR's textures, so
+# before; an enabled copy above NeoForge's mod pack masks the JAR's textures, so
 # install and uninstall both remove it.
 $script:LEGACY_RESOURCE_PACK_PATH = 'resourcepacks\RtxRemix-LabPBR'
 
@@ -684,18 +689,19 @@ function Resolve-Java21ForArm {
     return (Join-Path $script:MANAGED_JDK_DIR 'bin\java.exe')
 }
 
-function Resolve-JavaForFabricInstaller {
-    # x64 + Microsoft launcher: any Java 8+ works. Probe PATH -> managed JDK
-    # -> MS launcher's bundled runtimes -> Adoptium fallback. Arch-match is
-    # not required (installer is a one-shot).
+function Resolve-JavaForNeoForgeInstaller {
+    # x64 + Microsoft launcher: the NeoForge installer's processors are built
+    # for Java 21, the release Minecraft 1.21.1 itself runs on. Probe PATH ->
+    # managed JDK -> MS launcher's bundled runtimes -> Adoptium fallback.
+    # Arch-match is not required (installer is a one-shot).
     $onPath = Get-Command java -ErrorAction SilentlyContinue
-    if ($onPath) {
-        Write-Info "Using system Java for Fabric installer: $($onPath.Source)"
+    if ($onPath -and (Get-JavaMajor $onPath.Source) -ge 21) {
+        Write-Info "Using system Java for NeoForge installer: $($onPath.Source)"
         return $onPath.Source
     }
     $managed = Join-Path $script:MANAGED_JDK_DIR 'bin\java.exe'
     if (Test-Path -LiteralPath $managed) {
-        Write-Info 'Using previously-installed managed JDK for Fabric installer'
+        Write-Info 'Using previously-installed managed JDK for NeoForge installer'
         return $managed
     }
     $runtimeRoots = @(
@@ -703,7 +709,9 @@ function Resolve-JavaForFabricInstaller {
         'C:\Program Files (x86)\Minecraft Launcher\runtime',
         'C:\Program Files\Minecraft Launcher\runtime'
     )
-    $components = @('java-runtime-delta', 'java-runtime-gamma', 'java-runtime-beta', 'java-runtime-alpha', 'jre-legacy')
+    # java-runtime-delta is the launcher's Java 21; the older runtimes are too
+    # old for the installer.
+    $components = @('java-runtime-delta')
     foreach ($root in $runtimeRoots) {
         if (-not (Test-Path -LiteralPath $root)) { continue }
         foreach ($comp in $components) {
@@ -1059,12 +1067,12 @@ function Get-DetectedState {
       JavaManagedMajor     : major version of managed JDK, or 0
       HasPrism / PrismDataDir / PrismIsPortable
       HasMs
-      Prism_FabricReady    : does the Prism instance exist AND claim Fabric?
-                             (we can't easily tell 'Fabric-component-installed'
-                              vs 'mmc-pack.json says Fabric'; we check the
+      PrismLoaderReady     : does the Prism instance exist AND claim NeoForge?
+                             (we can't easily tell 'NeoForge-component-installed'
+                              vs 'mmc-pack.json says NeoForge'; we check the
                               latter)
-      Ms_FabricReady       : MS has both the versions dir AND the profile
-                             entry for the pinned fabric-loader-{ver}-{mc}
+      MsLoaderReady        : MS has both the versions dir AND the profile
+                             entry for the pinned neoforge-{ver}
       ModInstalled         : hashtable { Prism=<filename>, Microsoft=<filename> }
       ModPackage           : basename of the JAR in dist/mods/, or $null
       Status               : 'install' | 'upgrade' | 'repair' | 'no-package'
@@ -1107,20 +1115,20 @@ function Get-DetectedState {
         }
     }
 
-    # Fabric on MS: surface whether the versions/ dir and launcher_profiles.json
+    # NeoForge on MS: surface whether the versions/ dir and launcher_profiles.json
     # entry BOTH exist (the bug addressed in feedback #10 was version-dir-only,
     # which the launcher UI couldn't see).
-    $msFabricVersionDir = $false
-    $msFabricProfile    = $false
+    $msLoaderVersionDir = $false
+    $msLoaderProfile    = $false
     if ($state.HasMs) {
-        $versionDir = Join-Path $env:APPDATA ".minecraft\versions\$($script:FABRIC_VERSION_ID)"
-        $msFabricVersionDir = Test-Path -LiteralPath $versionDir
-        $msFabricProfile    = Test-MsFabricProfileRegistered
+        $versionDir = Join-Path $env:APPDATA ".minecraft\versions\$($script:NEOFORGE_VERSION_ID)"
+        $msLoaderVersionDir = Test-Path -LiteralPath $versionDir
+        $msLoaderProfile    = Test-MsLoaderProfileRegistered
     }
-    $msFabricReady = $msFabricVersionDir -and $msFabricProfile
-    $prismFabricReady = $false
+    $msLoaderReady = $msLoaderVersionDir -and $msLoaderProfile
+    $prismLoaderReady = $false
     if ($state.HasPrism -and $state.PrismDataDir) {
-        # Cheap check: instance.cfg exists AND mmc-pack.json references Fabric.
+        # Cheap check: instance.cfg exists AND mmc-pack.json references NeoForge.
         # Actual component install happens on Prism's first launch; we can't
         # probe that from here without running Prism.
         $cfg  = Join-Path $state.PrismDataDir "instances\$($script:PRISM_INSTANCE_NAME)\instance.cfg"
@@ -1128,8 +1136,8 @@ function Get-DetectedState {
         if ((Test-Path -LiteralPath $cfg) -and (Test-Path -LiteralPath $pack)) {
             try {
                 $json = Get-Content -LiteralPath $pack -Raw | ConvertFrom-Json -ErrorAction Stop
-                $prismFabricReady = [bool]($json.components | Where-Object { $_.uid -eq 'net.fabricmc.fabric-loader' })
-            } catch { $prismFabricReady = $false }
+                $prismLoaderReady = [bool]($json.components | Where-Object { $_.uid -eq 'net.neoforged' })
+            } catch { $prismLoaderReady = $false }
         }
     }
 
@@ -1184,10 +1192,10 @@ function Get-DetectedState {
         PrismDataDir         = $state.PrismDataDir
         PrismIsPortable      = ($state.PrismDataDir -eq $script:PRISM_PORTABLE_DIR)
         HasMs                = $state.HasMs
-        PrismFabricReady     = $prismFabricReady
-        MsFabricVersionDir   = $msFabricVersionDir
-        MsFabricProfile      = $msFabricProfile
-        MsFabricReady        = $msFabricReady
+        PrismLoaderReady     = $prismLoaderReady
+        MsLoaderVersionDir   = $msLoaderVersionDir
+        MsLoaderProfile      = $msLoaderProfile
+        MsLoaderReady        = $msLoaderReady
         ModInstalled         = $mods
         ModPackage           = $packageMod
         PrismLegacyInstalled = $prismLegacyInstalled
@@ -1272,27 +1280,27 @@ function Write-DetectedStateBlock {
         }
     }
 
-    # Fabric: explicit status per launcher so the user can tell WHAT
+    # NeoForge: explicit status per launcher so the user can tell WHAT
     # specifically isn't installed. Previously "not yet" was ambiguous
     # (missing version dir? profile? both?); now we say so.
     $fparts = @()
     if ($State.HasPrism) {
-        $label = if ($State.PrismFabricReady) { 'installed' } else { 'not installed' }
+        $label = if ($State.PrismLoaderReady) { 'installed' } else { 'not installed' }
         $fparts += "Prism: $label"
     }
     if ($State.HasMs) {
         $msLabel = switch ($true) {
-            ($State.MsFabricVersionDir -and $State.MsFabricProfile)       { 'installed'; break }
-            ($State.MsFabricVersionDir -and -not $State.MsFabricProfile)  { 'missing launcher profile (files present)'; break }
-            (-not $State.MsFabricVersionDir -and $State.MsFabricProfile)  { 'missing version files (profile present)'; break }
+            ($State.MsLoaderVersionDir -and $State.MsLoaderProfile)       { 'installed'; break }
+            ($State.MsLoaderVersionDir -and -not $State.MsLoaderProfile)  { 'missing launcher profile (files present)'; break }
+            (-not $State.MsLoaderVersionDir -and $State.MsLoaderProfile)  { 'missing version files (profile present)'; break }
             default                                                       { 'not installed' }
         }
         $fparts += "Microsoft: $msLabel"
     }
     if ($fparts.Count -gt 0) {
-        Write-Host "$(_fmtKey 'Fabric:')$($script:FABRIC_LOADER_VER)-$($script:MC_VERSION) ($($fparts -join ', '))"
+        Write-Host "$(_fmtKey 'NeoForge:')$($script:NEOFORGE_VERSION) for $($script:MC_VERSION) ($($fparts -join ', '))"
     } else {
-        Write-Host "$(_fmtKey 'Fabric:')$($script:FABRIC_LOADER_VER)-$($script:MC_VERSION) (no launcher to install into)"
+        Write-Host "$(_fmtKey 'NeoForge:')$($script:NEOFORGE_VERSION) for $($script:MC_VERSION) (no launcher to install into)"
     }
 
     # Mod
@@ -1311,9 +1319,6 @@ function Write-DetectedStateBlock {
             $first = $false
         }
     }
-
-    # Fabric API version pin
-    Write-Host "$(_fmtKey 'Fabric API:')$($script:FABRIC_API_VERSION)"
 }
 
 # --- Install / Upgrade implementation ---
@@ -1632,11 +1637,38 @@ function Disable-PrismUpdateCheck {
     }
 }
 
+function Write-PrismInstancePack {
+    # The instance's components: Minecraft and the pinned NeoForge. Prism
+    # resolves and downloads both on the instance's first launch.
+    param([string]$InstanceDir)
+    $pack = @{
+        components = @(
+            @{ cachedName = 'Minecraft'; important = $true; uid = 'net.minecraft'; version = $script:MC_VERSION }
+            @{ cachedName = 'NeoForge';                     uid = 'net.neoforged'; version = $script:NEOFORGE_VERSION }
+        )
+        formatVersion = 1
+    }
+    ($pack | ConvertTo-Json -Depth 8) | Out-File -LiteralPath (Join-Path $InstanceDir 'mmc-pack.json') -Encoding ascii
+}
+
 function Initialize-PrismInstance {
     param([string]$InstanceDir)
     $cfg = Join-Path $InstanceDir 'instance.cfg'
     if (Test-Path -LiteralPath $cfg) {
         Write-Info "Reusing existing Prism instance: $($script:PRISM_INSTANCE_NAME)"
+        # An instance an earlier, Fabric-based release created still names
+        # Fabric Loader; move it to the pinned NeoForge. A NeoForge version the
+        # user picked in Prism is left alone.
+        $packPath = Join-Path $InstanceDir 'mmc-pack.json'
+        $hasNeoForge = $false
+        try {
+            $json = Get-Content -LiteralPath $packPath -Raw | ConvertFrom-Json -ErrorAction Stop
+            $hasNeoForge = [bool]($json.components | Where-Object { $_.uid -eq 'net.neoforged' })
+        } catch { $hasNeoForge = $false }
+        if (-not $hasNeoForge) {
+            Write-Info "Switching the Prism instance to NeoForge $($script:NEOFORGE_VERSION)"
+            Write-PrismInstancePack -InstanceDir $InstanceDir
+        }
         return
     }
     Write-Info "Creating Prism instance: $($script:PRISM_INSTANCE_NAME)"
@@ -1646,14 +1678,7 @@ function Initialize-PrismInstance {
         "name=$($script:PRISM_INSTANCE_NAME)"
         'JavaVersion=21'
     ) -join "`r`n" | Out-File -LiteralPath $cfg -Encoding ascii -NoNewline
-    $pack = @{
-        components = @(
-            @{ cachedName = 'Minecraft';     important = $true; uid = 'net.minecraft';              version = $script:MC_VERSION }
-            @{ cachedName = 'Fabric Loader';                   uid = 'net.fabricmc.fabric-loader'; version = $script:FABRIC_LOADER_VER }
-        )
-        formatVersion = 1
-    }
-    ($pack | ConvertTo-Json -Depth 8) | Out-File -LiteralPath (Join-Path $InstanceDir 'mmc-pack.json') -Encoding ascii
+    Write-PrismInstancePack -InstanceDir $InstanceDir
 }
 
 function Set-PrismJavaPin {
@@ -1820,7 +1845,7 @@ function Sync-JvmArgs {
 
     # Microsoft launcher: defensive JSON read.
     $lp  = Join-Path $env:APPDATA '.minecraft\launcher_profiles.json'
-    $key = $script:FABRIC_PROFILE_KEY
+    $key = $script:NEOFORGE_PROFILE_KEY
     if (-not (Test-Path -LiteralPath $lp)) { return }
     $json = $null
     try {
@@ -1832,7 +1857,7 @@ function Sync-JvmArgs {
         return
     }
     if (-not $json -or -not $json.PSObject.Properties['profiles'] -or -not $json.profiles) {
-        Write-Trace 'launcher_profiles.json has no profiles section; Fabric installer will populate it.'
+        Write-Trace 'launcher_profiles.json has no profiles section; NeoForge installer will populate it.'
         return
     }
     if (-not $json.profiles.PSObject.Properties[$key]) {
@@ -2194,7 +2219,7 @@ function Write-MsLauncherJvmArgs {
     # this file itself on shutdown, so an in-place write during launcher
     # runtime can corrupt it.
     $lp  = Join-Path $env:APPDATA '.minecraft\launcher_profiles.json'
-    $key = $script:FABRIC_PROFILE_KEY
+    $key = $script:NEOFORGE_PROFILE_KEY
     try {
         # The launcher writes BOM-less UTF-8. Windows PowerShell 5.1 would
         # otherwise decode it through the active ANSI code page.
@@ -2247,70 +2272,82 @@ function Initialize-Prism {
     return $instanceDir
 }
 
-function Test-MsFabricProfileRegistered {
-    # Returns $true if launcher_profiles.json has a fabric-loader-{ver}-{mc}
-    # profile entry. The Fabric installer writes both a versions/ dir AND a
-    # profiles.* entry; a user who deletes the profile manually leaves the
-    # versions dir behind, so version-dir-presence alone is NOT a reliable
-    # signal that the launcher knows about Fabric.
+function Test-MsLoaderProfileRegistered {
+    # Returns $true if launcher_profiles.json has the NeoForge profile entry.
+    # The NeoForge installer writes both a versions/ dir AND a profiles.*
+    # entry; a user who deletes the profile manually leaves the versions dir
+    # behind, so version-dir-presence alone is NOT a reliable signal that the
+    # launcher knows about NeoForge.
     $lp = Join-Path $env:APPDATA '.minecraft\launcher_profiles.json'
     if (-not (Test-Path -LiteralPath $lp)) { return $false }
     try {
         $json = Get-Content -LiteralPath $lp -Raw | ConvertFrom-Json -ErrorAction Stop
     } catch { return $false }
     if (-not $json.PSObject.Properties['profiles'] -or -not $json.profiles) { return $false }
-    $key = $script:FABRIC_PROFILE_KEY
-    return [bool]$json.profiles.PSObject.Properties[$key]
+    $key = $script:NEOFORGE_PROFILE_KEY
+    if (-not $json.profiles.PSObject.Properties[$key]) { return $false }
+    # The installer reuses its profile key across NeoForge versions, so the
+    # entry only counts once it launches the pinned version.
+    $profileObj = $json.profiles.$key
+    return ($profileObj.PSObject.Properties['lastVersionId'] -and $profileObj.lastVersionId -eq $script:NEOFORGE_VERSION_ID)
 }
 
 function Initialize-MicrosoftLauncher {
     param([string]$JavaExe, [switch]$Unattended)
-    if (-not (Test-Path -LiteralPath (Join-Path $env:APPDATA '.minecraft\launcher_profiles.json'))) {
+    $mcDir = Join-Path $env:APPDATA '.minecraft'
+    if (-not (Test-Path -LiteralPath (Join-Path $mcDir 'launcher_profiles.json'))) {
         throw 'Microsoft Minecraft launcher not detected. Install it first from https://www.minecraft.net/en-us/download'
     }
-    # Both conditions are required. Users who delete a Fabric profile entry in
-    # the launcher UI leave the versions/ dir behind; if we only checked that,
-    # we'd short-circuit and the launcher UI would have no entry to select.
-    $versionDir   = Join-Path $env:APPDATA ".minecraft\versions\$($script:FABRIC_VERSION_ID)"
+    # Both conditions are required. Users who delete the NeoForge profile entry
+    # in the launcher UI leave the versions/ dir behind; if we only checked
+    # that, we'd short-circuit and the launcher UI would have no entry to select.
+    $versionDir   = Join-Path $mcDir "versions\$($script:NEOFORGE_VERSION_ID)"
     $hasVersion   = Test-Path -LiteralPath $versionDir
-    $hasProfile   = Test-MsFabricProfileRegistered
+    $hasProfile   = Test-MsLoaderProfileRegistered
     if ($hasVersion -and $hasProfile) {
-        Write-Info "Reusing existing Fabric $($script:FABRIC_LOADER_VER) for MC $($script:MC_VERSION)"
+        Write-Info "Reusing existing NeoForge $($script:NEOFORGE_VERSION) for MC $($script:MC_VERSION)"
     } else {
         if ($hasVersion -and -not $hasProfile) {
-            Write-Info "Fabric $($script:FABRIC_LOADER_VER) version dir exists but no launcher profile entry; re-running installer to re-register it."
+            Write-Info "NeoForge $($script:NEOFORGE_VERSION) version dir exists but no launcher profile entry; re-running installer to re-register it."
         } else {
-            Write-Info 'Downloading Fabric installer...'
+            Write-Info 'Downloading NeoForge installer...'
         }
-        $url = "https://maven.fabricmc.net/net/fabricmc/fabric-installer/$($script:FABRIC_INSTALLER_VER)/fabric-installer-$($script:FABRIC_INSTALLER_VER).jar"
-        $jar = New-SessionTempPath 'fabric-installer.jar'
-        $pinned = if ($script:FABRIC_INSTALLER_SHA256) { $script:FABRIC_INSTALLER_SHA256 } else { $null }
+        $url = "https://maven.neoforged.net/releases/net/neoforged/neoforge/$($script:NEOFORGE_VERSION)/neoforge-$($script:NEOFORGE_VERSION)-installer.jar"
+        $jar = New-SessionTempPath 'neoforge-installer.jar'
+        $pinned = if ($script:NEOFORGE_INSTALLER_SHA256) { $script:NEOFORGE_INSTALLER_SHA256 } else { $null }
         Invoke-VerifiedDownload -Url $url -Destination $jar -ExpectedSha256 $pinned -ChecksumUrl "$url.sha256"
-        # NOT -noprofile: we want the fabric-loader profile registered in
+        # --install-client registers the NeoForge profile in
         # launcher_profiles.json so it appears in the launcher UI. The
         # installer is idempotent, safe to re-run when the version dir
         # already exists; it just updates/re-registers the profile entry.
-        # Captured, not left in the output stream: its lines would otherwise be
-        # returned by Invoke-InstallOrUpgrade along with the exit code.
-        $fabricOut = & $JavaExe -jar $jar client -mcversion $script:MC_VERSION -loader $script:FABRIC_LOADER_VER 2>&1
-        if ($LASTEXITCODE -ne 0) {
-            $fabricOut | ForEach-Object { Write-Warn "$_" }
-            throw 'Fabric installer execution failed (non-zero exit).'
+        # It writes installer.log beside the JAR, so run it from the session
+        # temp dir. Captured, not left in the output stream: its lines would
+        # otherwise be returned by Invoke-InstallOrUpgrade along with the
+        # exit code.
+        Push-Location -LiteralPath (Split-Path -Parent $jar)
+        try {
+            $installerOut = & $JavaExe -jar $jar --install-client $mcDir 2>&1
+            $installerExit = $LASTEXITCODE
+        } finally {
+            Pop-Location
+        }
+        if ($installerExit -ne 0) {
+            $installerOut | ForEach-Object { Write-Warn "$_" }
+            throw 'NeoForge installer execution failed (non-zero exit).'
         }
     }
     Set-MsLauncherProfileName
-    Write-Info 'Configuring Minecraft 1.21.1 launcher JVM defaults on the Fabric profile...'
+    Write-Info 'Configuring Minecraft 1.21.1 launcher JVM defaults on the NeoForge profile...'
     Sync-JvmArgs -For Microsoft -Unattended:$Unattended
 }
 
 function Set-MsLauncherProfileName {
     <#
-      Rename the Fabric profile in launcher_profiles.json from the Fabric
-      installer's default (typically 'fabric-loader-<mc>', same as the
-      profile key) to our user-facing label. Also treats prior names we've
-      shipped as "default" so re-running the installer after we rename
-      updates cleanly. Any other name is treated as a user customization
-      and left alone.
+      Rename the NeoForge profile in launcher_profiles.json from the NeoForge
+      installer's default ('NeoForge', same as the profile key) to our
+      user-facing label. Also treats prior names we've shipped as "default"
+      so re-running the installer after we rename updates cleanly. Any other
+      name is treated as a user customization and left alone.
     #>
     $lp = Join-Path $env:APPDATA '.minecraft\launcher_profiles.json'
     if (-not (Test-Path -LiteralPath $lp)) { return }
@@ -2321,7 +2358,7 @@ function Set-MsLauncherProfileName {
         Write-Warn "Could not parse launcher_profiles.json; profile rename skipped."
         return
     }
-    $key = $script:FABRIC_PROFILE_KEY
+    $key = $script:NEOFORGE_PROFILE_KEY
     if (-not $json.PSObject.Properties['profiles'] -or -not $json.profiles -or -not $json.profiles.PSObject.Properties[$key]) {
         Write-Trace "MS launcher profile '$key' not present; profile rename skipped."
         return
@@ -2329,25 +2366,23 @@ function Set-MsLauncherProfileName {
     $profileObj = $json.profiles.$key
     $currentName = if ($profileObj.PSObject.Properties['name']) { $profileObj.name } else { '' }
     $defaults = @(
-        $key                                              # Fabric installer default (e.g. 'fabric-loader-1.21.1')
+        $key                                              # NeoForge installer default ('NeoForge')
         ''                                                # empty name
-        'fabric-loader'                                   # legacy Fabric installer default
-        "fabric-loader-$($script:FABRIC_LOADER_VER)-$($script:MC_VERSION)"  # older loader-included key
         'NVIDIA RTX Remix'                                # our prior label
         'RTX Remix'                                       # any earlier labels we might have used
     )
-    if ($currentName -eq $script:FABRIC_PROFILE_NAME) {
-        Write-Trace "MS launcher profile already named '$($script:FABRIC_PROFILE_NAME)'; no change."
+    if ($currentName -eq $script:MS_PROFILE_NAME) {
+        Write-Trace "MS launcher profile already named '$($script:MS_PROFILE_NAME)'; no change."
         return
     }
     if ($defaults -notcontains $currentName) {
-        Write-Info "MS launcher profile has a custom name ('$currentName'); leaving untouched. Rename manually in the launcher UI if you'd prefer '$($script:FABRIC_PROFILE_NAME)'."
+        Write-Info "MS launcher profile has a custom name ('$currentName'); leaving untouched. Rename manually in the launcher UI if you'd prefer '$($script:MS_PROFILE_NAME)'."
         return
     }
-    $profileObj | Add-Member -NotePropertyName name -NotePropertyValue $script:FABRIC_PROFILE_NAME -Force
+    $profileObj | Add-Member -NotePropertyName name -NotePropertyValue $script:MS_PROFILE_NAME -Force
     $out = ($json | ConvertTo-Json -Depth 32)
     Write-FileAtomic -Path $lp -Content $out -Backup
-    Write-Info "Renamed Microsoft launcher profile to '$($script:FABRIC_PROFILE_NAME)'."
+    Write-Info "Renamed Microsoft launcher profile to '$($script:MS_PROFILE_NAME)'."
 }
 
 function Install-ModFiles {
@@ -2397,66 +2432,25 @@ function Install-ModFiles {
         -LegacyPackName (Split-Path $script:LEGACY_RESOURCE_PACK_PATH -Leaf)
 }
 
-function Install-FabricApi {
+function Remove-FabricLeftovers {
     <#
-      For Prism (isolated instance): prune older fabric-api-*.jar whether or
-      not we download a new one: a half-succeeded prior install could have
-      left both versions behind, and Fabric loader's classpath ordering
-      warnings aren't worth ignoring. For Microsoft launcher (shared
-      .minecraft/mods): install ours alongside; DO NOT prune others, since
-      other Fabric profiles on the same shared dir would break.
+      Earlier releases ran on Fabric and installed Fabric API beside the mod.
+      NeoForge does not load either, so a Prism instance (isolated, ours)
+      drops every fabric-api-*.jar. The Microsoft launcher's mods folder is
+      shared with the user's other profiles, which may still be Fabric ones,
+      so nothing is removed there; uninstall removes the one JAR we put there.
     #>
     param([string]$McDir, [ValidateSet('Prism','Microsoft')] [string]$Launcher)
-    $desired = "fabric-api-$($script:FABRIC_API_VERSION).jar"
-    $target  = Join-Path $McDir "mods\$desired"
-
-    # Stale-version pruning on Prism is deferred until AFTER a successful
-    # download. Otherwise a network failure mid-upgrade would leave the
-    # instance with no fabric-api at all (install-side), breaking Fabric
-    # loader's classpath. Snapshot stale files so we can roll back if the
-    # download fails after we've moved any of them around.
-    $staleJars = @()
-    if ($Launcher -eq 'Prism') {
-        $staleJars = @(Get-ChildItem -LiteralPath (Join-Path $McDir 'mods') -Filter 'fabric-api-*.jar' -ErrorAction SilentlyContinue |
-            Where-Object { $_.Name -ne $desired })
-    }
-
-    if (Test-Path -LiteralPath $target) {
-        Write-Info "Fabric API already at desired version: $desired"
-        # Desired version is in place; we can safely remove stale versions now
-        # without a rollback window: if the instance already works, pruning
-        # co-installed older versions only reduces Fabric classpath noise.
-        $staleJars | ForEach-Object { Write-Info "Removing stale Fabric API: $($_.Name)"; Remove-Item -LiteralPath $_.FullName -Force }
+    if ($Launcher -ne 'Prism') {
+        Write-Trace 'Microsoft launcher mods folder is shared; leaving any Fabric API JARs in place.'
         return
     }
-    $url = "https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/$($script:FABRIC_API_VERSION)/$desired"
-    $tmp = New-SessionTempPath "$desired.part"
-    Write-Info "Downloading Fabric API $($script:FABRIC_API_VERSION)..."
-    try {
-        # Prefer a pinned literal hash (script constant) over the Maven
-        # sidecar when present. Falls through to sidecar if empty.
-        $pinned = if ($script:FABRIC_API_SHA256) { $script:FABRIC_API_SHA256 } else { $null }
-        Invoke-VerifiedDownload -Url $url -Destination $tmp -ExpectedSha256 $pinned -ChecksumUrl "$url.sha256"
-    } catch {
-        Write-Err "Fabric API download failed: $url"
-        Write-Err 'Existing fabric-api-*.jar (if any) left untouched.'
-        throw
+    $stale = @(Get-ChildItem -LiteralPath (Join-Path $McDir 'mods') -Filter 'fabric-api-*.jar' -ErrorAction SilentlyContinue)
+    if ($stale.Count -eq 0) {
+        Write-Info 'No Fabric leftovers to remove.'
+        return
     }
-    if ((Get-Item -LiteralPath $tmp).Length -lt 1024) {
-        throw 'Fabric API download looks truncated (<1 KB).'
-    }
-    Move-Item -LiteralPath $tmp -Destination $target -Force
-
-    # Download succeeded; now safe to prune stale versions.
-    $staleJars | ForEach-Object { Write-Info "Replacing stale Fabric API: $($_.Name)"; Remove-Item -LiteralPath $_.FullName -Force }
-
-    if ($Launcher -eq 'Microsoft') {
-        $others = @(Get-ChildItem -LiteralPath (Join-Path $McDir 'mods') -Filter 'fabric-api-*.jar' | Where-Object { $_.Name -ne $desired })
-        if ($others.Count -gt 0) {
-            Write-Info "Leaving $($others.Count) other fabric-api-*.jar file(s) untouched (shared with your other Fabric profiles)."
-        }
-    }
-    Write-Info "Installed $desired"
+    $stale | ForEach-Object { Write-Info "Removing Fabric API left by an earlier release: $($_.Name)"; Remove-Item -LiteralPath $_.FullName -Force }
 }
 
 function Get-ServersDatHosts {
@@ -2720,12 +2714,12 @@ function Invoke-InstallOrUpgrade {
     # Java handling matrix (same as install.bat original):
     #   ARM64           -> always install managed JDK
     #   x64 + Prism     -> no Java needed (Prism Wizard handles at runtime)
-    #   x64 + Microsoft -> probe + fallback for fabric-installer.jar
+    #   x64 + Microsoft -> probe + fallback for the NeoForge installer JAR
     $installerJava = $null
     if (Test-HostIsArm64) {
         $installerJava = Resolve-Java21ForArm
     } elseif ($launcher -eq 'Microsoft') {
-        $installerJava = Resolve-JavaForFabricInstaller
+        $installerJava = Resolve-JavaForNeoForgeInstaller
     }
 
     Write-Step 'Preparing launcher'
@@ -2743,8 +2737,8 @@ function Invoke-InstallOrUpgrade {
     $script:ModFilesCopied = $true
     Install-ModFiles -McDir $mcDir
 
-    Write-Step 'Configuring Fabric API'
-    Install-FabricApi -McDir $mcDir -Launcher $launcher
+    Write-Step 'Removing Fabric leftovers'
+    Remove-FabricLeftovers -McDir $mcDir -Launcher $launcher
 
     # A server entry is added only when -DevServer names a host. An existing
     # populated servers.dat is never merged into.
@@ -2907,7 +2901,7 @@ function Write-FinalInstructions {
         if ($Unattended) { Write-Host "  $($script:ICON_INFO) Launch the Microsoft Minecraft Launcher." }
         else { Write-Host "  $($script:ICON_INFO) The Microsoft Minecraft Launcher opens next." }
         Write-Host "  $($script:ICON_INFO) Sign in if prompted."
-        Write-Host "  $($script:ICON_INFO) Select the $($script:C_NVGREEN)'$($script:FABRIC_PROFILE_NAME)'$($script:C_RESET) profile and click Play."
+        Write-Host "  $($script:ICON_INFO) Select the $($script:C_NVGREEN)'$($script:MS_PROFILE_NAME)'$($script:C_RESET) profile and click Play."
     }
     Write-Host "  $($script:ICON_INFO) Once in the world, verify with $($script:C_NVGREEN)/rtx status$($script:C_RESET) in chat."
     Write-Host ''
@@ -2960,7 +2954,7 @@ function Invoke-Uninstall {
         Write-Host ''
         Write-Host '  The following will be removed from each target:'
         Write-Host "    - $($script:C_DIM)<mc>/mods/rtx-remix-renderer-*.jar$($script:C_RESET)"
-        Write-Host "    - $($script:C_DIM)<mc>/mods/fabric-api-$($script:FABRIC_API_VERSION).jar$($script:C_RESET) (Microsoft: only our exact version; Prism: all fabric-api-*)"
+        Write-Host "    - $($script:C_DIM)<mc>/mods/$($script:LEGACY_FABRIC_API_JAR)$($script:C_RESET) left by an earlier Fabric release (Microsoft: only that exact version; Prism: all fabric-api-*)"
         Write-Host "    - $($script:C_DIM)<mc>/remix-sdk/, <mc>/rtx.conf, <mc>/.rtx-remix-version$($script:C_RESET)"
         Write-Host "    - $($script:C_DIM)<mc>/textures/water_normals_flipbook.dds, <mc>/textures/overcast_thunderstorm_bc6u.dds$($script:C_RESET)"
         Write-Host "    - $($script:C_DIM)<mc>/resourcepacks/RtxRemix-LabPBR/$($script:C_RESET) (if left by an earlier version)"
@@ -3041,15 +3035,16 @@ function Remove-ModArtifacts {
     Get-ChildItem -LiteralPath (Join-Path $McDir 'mods') -Filter 'rtx-remix-renderer-*.jar' -ErrorAction SilentlyContinue |
         ForEach-Object { Write-Info "Removing $($_.Name)"; Remove-Item -LiteralPath $_.FullName -Force }
 
-    # Fabric API handling mirrors Install-FabricApi's scoping:
+    # Fabric API an earlier, Fabric-based release installed, scoped as
+    # Remove-FabricLeftovers is:
     #   Prism (isolated instance) -> clean up every fabric-api-*.jar we find.
-    #   Microsoft (shared .minecraft/mods) -> only our version-pinned one.
+    #   Microsoft (shared .minecraft/mods) -> only the version we pinned.
     if ($Launcher -eq 'Prism') {
         Get-ChildItem -LiteralPath (Join-Path $McDir 'mods') -Filter 'fabric-api-*.jar' -ErrorAction SilentlyContinue |
             ForEach-Object { Write-Info "Removing $($_.Name)"; Remove-Item -LiteralPath $_.FullName -Force }
     } else {
-        $fabricJar = Join-Path $McDir "mods\fabric-api-$($script:FABRIC_API_VERSION).jar"
-        if (Test-Path -LiteralPath $fabricJar) { Write-Info "Removing fabric-api-$($script:FABRIC_API_VERSION).jar"; Remove-Item -LiteralPath $fabricJar -Force }
+        $fabricJar = Join-Path $McDir "mods\$($script:LEGACY_FABRIC_API_JAR)"
+        if (Test-Path -LiteralPath $fabricJar) { Write-Info "Removing $($script:LEGACY_FABRIC_API_JAR)"; Remove-Item -LiteralPath $fabricJar -Force }
     }
     foreach ($path in @(
         (Join-Path $McDir 'remix-sdk')

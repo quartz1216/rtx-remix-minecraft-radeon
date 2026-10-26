@@ -38,14 +38,15 @@ public final class WorkerPoolCap {
     /** Logs whether the launcher capped the pool, and the value to pass if not. */
     public static void checkApplied() {
         String value = System.getProperty(PROPERTY);
-        int recommended = choose(Runtime.getRuntime().availableProcessors());
         if (value != null) {
             LOGGER.info("Background worker pool: {}={} set by the launcher", PROPERTY, value);
             return;
         }
+        // Vanilla already clamps the pool to the CPU count minus one, so the cap
+        // alone gives every machine choose(availableProcessors).
         LOGGER.warn("Background worker pool is uncapped ({} logical CPUs). Add -D{}={} to the"
                         + " JVM arguments to keep chunk-build waves from stalling frames.",
-                Runtime.getRuntime().availableProcessors(), PROPERTY, recommended);
+                Runtime.getRuntime().availableProcessors(), PROPERTY, MAX_THREADS);
     }
 
     /**

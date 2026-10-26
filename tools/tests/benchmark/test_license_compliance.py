@@ -33,8 +33,8 @@ NVIDIA_ENTITY = "NVIDIA CORPORATION & AFFILIATES. All rights reserved."
 # The copyright line that must sit above the Apache body in the root LICENSE.
 LICENSE_FIRST_LINE = f"Copyright (c) 2024-2026 {NVIDIA_ENTITY}"
 
-# Suffixes that carry a source header. `.accesswidener` covers the shipped Fabric
-# access widener. The GLSL suffixes cover shipped shaders, which carry the header
+# Suffixes that carry a source header. `.cfg` covers the shipped NeoForge
+# access transformer. The GLSL suffixes cover shipped shaders, which carry the header
 # in a comment above their `#version` directive. `.cpp` and `.h` cover the JNI bridge.
 HEADERED_SUFFIXES = frozenset(
     {
@@ -47,7 +47,7 @@ HEADERED_SUFFIXES = frozenset(
         ".psd1",
         ".bat",
         ".cmd",
-        ".accesswidener",
+        ".cfg",
         ".comp",
         ".fsh",
         ".vsh",
@@ -198,27 +198,27 @@ class ScriptEncodingTests(unittest.TestCase):
         )
 
 
-class AccessWidenerHeaderTests(unittest.TestCase):
-    """The access widener is the one headered file with a format constraint.
+class AccessTransformerHeaderTests(unittest.TestCase):
+    """The access transformer carries its SPDX header as `#` comments.
 
-    Fabric Loom parses the first line as the format header and rejects anything
-    above it with ClassTweakerFormatException, so the SPDX block has to sit
-    below it. That is easy to "fix" into a broken build during a header sweep.
+    NeoForge reads every line that is not a comment as an entry and fails the
+    build (validateAccessTransformers) on one it cannot parse, so the header has
+    to stay commented out.
     """
 
-    PATH = Path("src/main/resources/rtx-remix-renderer.accesswidener")
+    PATH = Path("src/main/resources/META-INF/accesstransformer.cfg")
 
-    def test_format_header_is_still_the_first_line(self):
+    def test_spdx_header_opens_the_file_as_comments(self):
         lines = read_text(REPO_ROOT / self.PATH).splitlines()
-        self.assertTrue(
-            lines[0].startswith("accessWidener "),
-            "the accessWidener format header must remain line 1; Loom rejects anything above it",
-        )
+        self.assertTrue(lines[0].startswith("# SPDX-FileCopyrightText: "), lines[0])
+        self.assertEqual(f"# {SPDX_LICENSE_LINE}", lines[1])
 
-    def test_spdx_header_is_present_below_the_format_header(self):
-        text = read_text(REPO_ROOT / self.PATH)
-        self.assertIn(SPDX_LICENSE_LINE, text)
-        self.assertLess(text.index("accessWidener "), text.index("SPDX-License-Identifier"))
+    def test_every_other_line_is_a_comment_or_an_entry(self):
+        for line in read_text(REPO_ROOT / self.PATH).splitlines():
+            if not line.strip() or line.startswith("#"):
+                continue
+            with self.subTest(line=line):
+                self.assertRegex(line, r"^(public|public-f|protected|protected-f) net\.minecraft\.[\w.$]+( \S+)?$")
 
 
 class ContributionDocumentTests(unittest.TestCase):

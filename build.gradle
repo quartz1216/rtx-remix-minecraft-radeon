@@ -147,8 +147,10 @@ sourceSets {
     }
 }
 
-// NeoForge (keep in sync with NEOFORGE_VERSION in packaging/installer.ps1,
-// which is what gets installed at runtime on the user's machine).
+// Minecraft and NeoForge (keep in sync with MC_VERSION and NEOFORGE_VERSION in
+// packaging/installer.ps1, which is what gets installed at runtime on the
+// user's machine). The NeoForge version line fixes the Minecraft version.
+def minecraftVersion = '1.21.1'
 def neoForgeVersion = '21.1.265'
 
 neoForge {
@@ -172,13 +174,13 @@ neoForge {
             // Keep in sync with RECOMMENDED_JVM_ARGS in packaging/installer.ps1.
             // Minecraft Launcher 1.21.1 defaults for supported Windows arches:
             // version metadata supplies HeapDumpPath; the profile supplies G1.
-            // NeoForge has no pre-launch hook ahead of Util's worker pool, so the
-            // pool cap travels as a JVM argument; mirrors WorkerPoolCap.choose.
             jvmArguments.addAll("-Xmx2G", "-XX:+UnlockExperimentalVMOptions", "-XX:+UseG1GC",
                    "-XX:G1NewSizePercent=20", "-XX:G1ReservePercent=20",
                    "-XX:MaxGCPauseMillis=50", "-XX:G1HeapRegionSize=32M",
                    "-XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump",
-                   "-Dmax.bg.threads=${Math.max(1, Math.min(8, Runtime.runtime.availableProcessors() - 1))}")
+                   // NeoForge has no pre-launch hook ahead of Util's worker pool, so
+                   // WorkerPoolCap's cap travels as a JVM argument.
+                   "-Dmax.bg.threads=8")
             if (benchmarkJfrPath.isPresent()) {
                 def jfrPath = benchmarkJfrPath.get().replace('\\', '/')
                 // maxsize=0 lifts JDK 21's 250 MB default disk cap so a long
@@ -241,9 +243,11 @@ processResources {
     inputs.property "gitShortHash", gitShortHash
     inputs.property "gitBranch", gitBranch
 
+    inputs.property "minecraftVersion", minecraftVersion
     inputs.property "neoForgeVersion", neoForgeVersion
     filesMatching("META-INF/neoforge.mods.toml") {
-        expand "version": resolvedBuildVersion, "neoForgeVersion": neoForgeVersion
+        expand "version": resolvedBuildVersion, "minecraftVersion": minecraftVersion,
+                "neoForgeVersion": neoForgeVersion
     }
     filesMatching("benchmark.properties") {
         expand "gitCommit": gitShortHash.get(), "gitBranch": gitBranch.get()

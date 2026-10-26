@@ -1,8 +1,8 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-import json
 import re
+import tomllib
 import unittest
 from pathlib import Path
 
@@ -18,11 +18,11 @@ def gradle_mod_version() -> str:
     raise AssertionError("gradle.properties has no mod_version")
 
 
-def gradle_dependency_version(group: str, artifact: str) -> str:
+def gradle_def(name: str) -> str:
     text = (REPO_ROOT / "build.gradle").read_text(encoding="utf-8")
-    match = re.search(rf'"{re.escape(group)}:{re.escape(artifact)}:([^\"]+)"', text)
+    match = re.search(rf"(?m)^def {re.escape(name)} = '([^']+)'$", text)
     if not match:
-        raise AssertionError(f"build.gradle has no {group}:{artifact} dependency")
+        raise AssertionError(f"build.gradle has no def {name}")
     return match.group(1)
 
 
@@ -44,9 +44,8 @@ class VersionConsistencyTests(unittest.TestCase):
 
     def test_runtime_dependency_versions_match_gradle(self):
         expected = {
-            "minecraft": gradle_dependency_version("com.mojang", "minecraft"),
-            "fabric_loader": gradle_dependency_version("net.fabricmc", "fabric-loader"),
-            "fabric_api": gradle_dependency_version("net.fabricmc.fabric-api", "fabric-api"),
+            "minecraft": gradle_def("minecraftVersion"),
+            "neoforge": gradle_def("neoForgeVersion"),
         }
         installer = REPO_ROOT / "packaging" / "installer.ps1"
 
@@ -55,8 +54,7 @@ class VersionConsistencyTests(unittest.TestCase):
                 installer,
                 {
                     "minecraft": "script:MC_VERSION",
-                    "fabric_loader": "script:FABRIC_LOADER_VER",
-                    "fabric_api": "script:FABRIC_API_VERSION",
+                    "neoforge": "script:NEOFORGE_VERSION",
                 },
             ),
         ):
@@ -83,26 +81,29 @@ class VersionConsistencyTests(unittest.TestCase):
         self.assertNotRegex(benchmark_controller, r'modVersion",\s*"\d+\.\d+\.\d+"')
         self.assertNotRegex(mod_entrypoint, r"Renderer v\d+\.\d+\.\d+")
 
-    def test_fabric_metadata_matches_repository_contract(self):
-        metadata = json.loads(
-            (REPO_ROOT / "src" / "main" / "resources" / "fabric.mod.json").read_text(encoding="utf-8")
+    def test_neoforge_metadata_matches_repository_contract(self):
+        metadata = tomllib.loads(
+            (REPO_ROOT / "src" / "main" / "resources" / "META-INF" / "neoforge.mods.toml").read_text(encoding="utf-8")
         )
-        minecraft_version = gradle_dependency_version("com.mojang", "minecraft")
-        fabric_loader_version = gradle_dependency_version("net.fabricmc", "fabric-loader")
-        fabric_api_version = gradle_dependency_version("net.fabricmc.fabric-api", "fabric-api")
+        build = (REPO_ROOT / "build.gradle").read_text(encoding="utf-8")
 
         self.assertEqual("Apache-2.0", metadata["license"])
-        self.assertEqual(minecraft_version, metadata["depends"]["minecraft"])
-        self.assertEqual(f">={fabric_loader_version}", metadata["depends"]["fabricloader"])
-        self.assertEqual(f">={fabric_api_version}", metadata["depends"]["fabric-api"])
-        self.assertNotIn("fabric-api", metadata.get("suggests", {}))
+        (mod,) = metadata["mods"]
+        # NeoForge mod ids cannot hold hyphens; the content namespace keeps them.
+        self.assertRegex(mod["modId"], r"^[a-z][a-z0-9_]{1,63}$")
+        self.assertIn(f"'{mod['modId']}' {{", build)
+        dependencies = {d["modId"]: d for d in metadata["dependencies"][mod["modId"]]}
+        # processResources fills both ranges from the build's pins.
+        self.assertEqual("[${neoForgeVersion},)", dependencies["neoforge"]["versionRange"])
+        self.assertEqual("[${minecraftVersion}]", dependencies["minecraft"]["versionRange"])
+        self.assertEqual({"required"}, {d["type"] for d in dependencies.values()})
+        self.assertEqual(["rtx-remix-renderer.mixins.json"], [m["config"] for m in metadata["mixins"]])
 
-        icon = metadata.get("icon")
-        if icon:
-            self.assertTrue((REPO_ROOT / "src" / "main" / "resources" / icon).is_file())
+        logo = mod.get("logoFile")
+        if logo:
+            self.assertTrue((REPO_ROOT / "src" / "main" / "resources" / logo).is_file())
 
-        sources = metadata.get("contact", {}).get("sources", "")
-        self.assertNotIn("rtxremix-java", sources)
+        self.assertNotIn("rtxremix-java", mod.get("displayURL", ""))
 
     def test_readme_license_matches_repository_license(self):
         license_text = (REPO_ROOT / "LICENSE").read_text(encoding="utf-8")

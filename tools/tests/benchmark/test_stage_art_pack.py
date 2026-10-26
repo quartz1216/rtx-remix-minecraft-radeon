@@ -25,7 +25,7 @@ class StageArtPackTests(unittest.TestCase):
     def test_append_art_pack_files_none_is_noop(self):
         self.assertEqual(runner.append_art_pack_files(["world-demo-pbr"], None), ["world-demo-pbr"])
 
-    def test_write_options_orders_vanilla_fabric_world_then_art(self):
+    def test_write_options_orders_vanilla_mod_resources_world_then_art(self):
         art = runner.ResourcePackSource(
             name="rtx-tools-art",
             file_name="rtx-tools-art",
@@ -38,7 +38,7 @@ class StageArtPackTests(unittest.TestCase):
         packs = next(
             line.removeprefix("resourcePacks:") for line in options.splitlines() if line.startswith("resourcePacks:")
         )
-        self.assertEqual(json.loads(packs), ["vanilla", "fabric", "file/world-demo-pbr", "file/rtx-tools-art"])
+        self.assertEqual(json.loads(packs), ["vanilla", "mod_resources", "file/world-demo-pbr", "file/rtx-tools-art"])
 
 
 if __name__ == "__main__":
