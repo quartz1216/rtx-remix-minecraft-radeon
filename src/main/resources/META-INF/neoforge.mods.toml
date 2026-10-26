@@ -1,0 +1,35 @@
+modLoader = "javafml"
+loaderVersion = "[4,)"
+license = "Apache-2.0"
+issueTrackerURL = "https://github.com/quartz1216/rtx-remix-minecraft-radeon/issues"
+
+[[mods]]
+modId = "rtx_remix_renderer"
+version = "${version}"
+displayName = "RTX Remix for Minecraft (Unofficial Radeon Fork)"
+displayURL = "https://github.com/quartz1216/rtx-remix-minecraft-radeon"
+authors = "quxomiya"
+credits = "NVIDIA (original RTX Remix for Minecraft)"
+description = '''
+Unofficial fork of NVIDIA's RTX Remix for Minecraft, targeting AMD Radeon GPUs. Renders Minecraft through the RTX Remix path tracer. Not affiliated with or endorsed by NVIDIA or AMD. NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
+'''
+
+[[mixins]]
+config = "rtx-remix-renderer.mixins.json"
+
+[[accessTransformers]]
+file = "META-INF/accesstransformer.cfg"
+
+[[dependencies.rtx_remix_renderer]]
+modId = "neoforge"
+type = "required"
+versionRange = "[${neoForgeVersion},)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.rtx_remix_renderer]]
+modId = "minecraft"
+type = "required"
+versionRange = "[1.21.1,1.21.2)"
+ordering = "NONE"
+side = "BOTH"

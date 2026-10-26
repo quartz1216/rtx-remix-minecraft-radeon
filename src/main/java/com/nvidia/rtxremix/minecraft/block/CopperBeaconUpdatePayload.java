@@ -5,23 +5,22 @@
 package com.nvidia.rtxremix.minecraft.block;
 
 import com.nvidia.rtxremix.minecraft.RtxRemixCommonMod;
-import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.minecraft.network.RegistryByteBuf;
-import net.minecraft.network.codec.PacketCodec;
-import net.minecraft.network.packet.CustomPayload;
-import net.minecraft.util.Identifier;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 
 /** One validated control edit from an open Copper Beacon screen. */
 public record CopperBeaconUpdatePayload(int syncId, Field field, float value)
-        implements CustomPayload {
+        implements CustomPacketPayload {
 
-    public static final Id<CopperBeaconUpdatePayload> ID = new Id<>(
-            Identifier.of(RtxRemixCommonMod.MOD_ID, "copper_beacon_update"));
-    public static final PacketCodec<RegistryByteBuf, CopperBeaconUpdatePayload> PACKET_CODEC =
-            new PacketCodec<>() {
+    public static final Type<CopperBeaconUpdatePayload> ID = new Type<>(
+            ResourceLocation.fromNamespaceAndPath(RtxRemixCommonMod.MOD_ID, "copper_beacon_update"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, CopperBeaconUpdatePayload> PACKET_CODEC =
+            new StreamCodec<>() {
                 @Override
-                public CopperBeaconUpdatePayload decode(RegistryByteBuf buffer) {
+                public CopperBeaconUpdatePayload decode(RegistryFriendlyByteBuf buffer) {
                     return new CopperBeaconUpdatePayload(
                             buffer.readVarInt(),
                             Field.byId(buffer.readVarInt()),
@@ -30,28 +29,31 @@ public record CopperBeaconUpdatePayload(int syncId, Field field, float value)
 
                 @Override
                 public void encode(
-                        RegistryByteBuf buffer, CopperBeaconUpdatePayload payload) {
+                        RegistryFriendlyByteBuf buffer, CopperBeaconUpdatePayload payload) {
                     buffer.writeVarInt(payload.syncId);
                     buffer.writeVarInt(payload.field.ordinal());
                     buffer.writeFloat(payload.value);
                 }
             };
 
-    public static void register() {
-        PayloadTypeRegistry.playC2S().register(ID, PACKET_CODEC);
-        ServerPlayNetworking.registerGlobalReceiver(ID, (payload, context) ->
-                context.server().execute(() -> {
-                    if (context.player().currentScreenHandler
+    /**
+     * Optional, so a client can still join a server without the mod; the
+     * screen checks {@code hasChannel} before sending.
+     */
+    public static void register(RegisterPayloadHandlersEvent event) {
+        event.registrar("1").optional().playToServer(ID, PACKET_CODEC, (payload, context) ->
+                context.enqueueWork(() -> {
+                    if (context.player().containerMenu
                                     instanceof CopperBeaconScreenHandler handler
-                            && handler.syncId == payload.syncId
-                            && handler.canUse(context.player())) {
+                            && handler.containerId == payload.syncId
+                            && handler.stillValid(context.player())) {
                         handler.applyUpdate(payload.field, payload.value);
                     }
                 }));
     }
 
     @Override
-    public Id<? extends CustomPayload> getId() {
+    public Type<? extends CustomPacketPayload> type() {
         return ID;
     }
 

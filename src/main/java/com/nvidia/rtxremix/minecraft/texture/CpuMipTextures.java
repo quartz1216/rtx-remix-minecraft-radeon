@@ -9,7 +9,6 @@ import com.nvidia.rtxremix.TextureFormat;
 import com.nvidia.rtxremix.TexturePurpose;
 import com.nvidia.rtxremix.minecraft.asset.RemixTexture;
 import com.nvidia.rtxremix.minecraft.asset.RemixTextureStore;
-import net.minecraft.client.MinecraftClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.regex.Pattern;
 import java.util.zip.CRC32;
+import net.minecraft.client.Minecraft;
 
 /**
  * Creates Remix textures through DDS files that carry a CPU-built mip chain.
@@ -83,7 +83,7 @@ public final class CpuMipTextures {
         String fileName = fileName(name);
         CRC32 crc = new CRC32();
         crc.update(data, 0, w * h * channels);
-        Path dir = MinecraftClient.getInstance().runDirectory.toPath().resolve(CACHE_DIR).resolve(subdir);
+        Path dir = Minecraft.getInstance().gameDirectory.toPath().resolve(CACHE_DIR).resolve(subdir);
         Path path = dir.resolve(String.format("%s-%dx%d-%08x.dds", fileName, w, h, crc.getValue()));
         try {
             if (!Files.exists(path)) {

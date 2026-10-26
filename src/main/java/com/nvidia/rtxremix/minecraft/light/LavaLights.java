@@ -4,9 +4,9 @@
  */
 package com.nvidia.rtxremix.minecraft.light;
 
-import net.minecraft.block.Blocks;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.block.Blocks;
 
 /**
  * Analytic lights for exposed lava surfaces.
@@ -30,7 +30,7 @@ public final class LavaLights {
 
     /** Rule path naming these lights, so their intensity control reads like a block rule's. */
     static final String RULE_PATH = "lava";
-    static final Identifier RULE_ID = BlockLightRuleIds.builtIn(RULE_PATH);
+    static final ResourceLocation RULE_ID = BlockLightRuleIds.builtIn(RULE_PATH);
     private static final int LAVA_LIGHT_LEVEL = 15;
     private static final LightEntry.ColorOverride LAVA_COLOR = LightEntry.ColorOverride.of(1.0f, 0.38f, 0.08f);
     private static final float RADIUS = 0.5f;
@@ -55,7 +55,7 @@ public final class LavaLights {
      */
     public static LightEntry cell(BlockPos cellOrigin, int surfaceCount, float x, float surfaceY, float z) {
         float intensity = SINGLE_BLOCK_RADIANCE * (float) Math.sqrt(surfaceCount);
-        return LightEntry.sphere(new BlockLightKey(cellOrigin.toImmutable(), RULE_ID, 0),
+        return LightEntry.sphere(new BlockLightKey(cellOrigin.immutable(), RULE_ID, 0),
                 LAVA_LIGHT_LEVEL, Blocks.LAVA,
                 x, surfaceY + HEIGHT_ABOVE_SURFACE, z,
                 RADIUS, LAVA_COLOR, intensity, LightEntry.defaultVolumetricRadianceScale());

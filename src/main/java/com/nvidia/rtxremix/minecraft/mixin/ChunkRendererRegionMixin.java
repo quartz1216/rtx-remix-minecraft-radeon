@@ -5,9 +5,7 @@
 package com.nvidia.rtxremix.minecraft.mixin;
 
 import com.nvidia.rtxremix.minecraft.terrain.capture.RegionSnapshotRelease;
-import net.minecraft.client.render.chunk.ChunkRendererRegion;
-import net.minecraft.client.render.chunk.RenderedChunk;
-import net.minecraft.world.World;
+import net.neoforged.neoforge.client.model.data.ModelData;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -16,24 +14,31 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import it.unimi.dsi.fastutil.longs.Long2ObjectFunction;
+import net.minecraft.client.renderer.chunk.RenderChunk;
+import net.minecraft.client.renderer.chunk.RenderChunkRegion;
+import net.minecraft.world.level.Level;
 
 /**
  * A render region holds one reference on each of its nine chunk snapshots from construction
  * until {@link #rtxremix$release}, which the rebuild task that consumed it calls exactly once;
  * see {@link RebuildTaskMixin}.
  */
-@Mixin(ChunkRendererRegion.class)
+@Mixin(RenderChunkRegion.class)
 public abstract class ChunkRendererRegionMixin implements RegionSnapshotRelease {
 
     @Shadow
     @Final
-    protected RenderedChunk[] chunks;
+    protected RenderChunk[] chunks;
 
     private final AtomicBoolean rtxremix$released = new AtomicBoolean();
 
-    @Inject(method = "<init>", at = @At("RETURN"))
-    private void rtxremix$retainSnapshots(World world, int chunkX, int chunkZ, RenderedChunk[] renderedChunks, CallbackInfo ci) {
-        for (RenderedChunk snapshot : chunks) {
+    // NeoForge's four-argument constructor delegates here, so this one sees every region once.
+    @Inject(method = "<init>(Lnet/minecraft/world/level/Level;II[Lnet/minecraft/client/renderer/chunk/RenderChunk;Lit/unimi/dsi/fastutil/longs/Long2ObjectFunction;)V",
+            at = @At("RETURN"))
+    private void rtxremix$retainSnapshots(Level world, int chunkX, int chunkZ, RenderChunk[] renderedChunks,
+                                          Long2ObjectFunction<ModelData> modelDataSnapshot, CallbackInfo ci) {
+        for (RenderChunk snapshot : chunks) {
             ((RegionSnapshotRelease) snapshot).rtxremix$retain();
         }
     }
@@ -48,7 +53,7 @@ public abstract class ChunkRendererRegionMixin implements RegionSnapshotRelease 
         if (!rtxremix$released.compareAndSet(false, true)) {
             return;
         }
-        for (RenderedChunk snapshot : chunks) {
+        for (RenderChunk snapshot : chunks) {
             ((RegionSnapshotRelease) snapshot).rtxremix$release();
         }
     }
