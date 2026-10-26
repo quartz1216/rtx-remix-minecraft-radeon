@@ -31,6 +31,16 @@ compatible. To build the JAR yourself, run
 `.\gradlew.bat package -Parch=win64`; [Getting Started](docs/GETTING_STARTED.md)
 covers the toolchain.
 
+### NeoForge
+
+A NeoForge build is available as a separate pre-release:
+[Unofficial Radeon Fix for Minecraft 1.21.1 NeoForge (v0.1.0)](https://github.com/quartz1216/rtx-remix-minecraft-radeon/releases/tag/unofficial-radeon-fix-1.21.1-neoforge-v0.1.0).
+It needs NeoForge 21.1.265 or newer for Minecraft 1.21.1 and no API mod; its
+release notes cover the install. Install either the Fabric or the NeoForge
+build, not both. Its source lives on the
+[`neoforge1.121.1`](https://github.com/quartz1216/rtx-remix-minecraft-radeon/tree/neoforge1.121.1)
+branch.
+
 ## Status
 
 An early pre-release, tested on an RX 9070 XT only. The runtime detects the
