@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "shots": [
+    {
+      "name": "intermadiate_distance_darkout",
+      "x": 420.7652713100899,
+      "y": 75.5,
+      "z": 52.679940448027246,
+      "yaw": -119.549866,
+      "pitch": 5.700005,
+      "timeOfDay": 8722,
+      "weather": "clear",
+      "rtx": true,
+      "proceduralClouds": false
+    },
+    {
+      "name": "block_strange_refrection",
+      "x": 430.90619767691277,
+      "y": 72.0,
+      "z": 45.37159674419435,
+      "yaw": -110.399704,
+      "pitch": 5.8500066,
+      "timeOfDay": 14716,
+      "weather": "clear",
+      "rtx": true,
+      "proceduralClouds": false
+    },
+    {
+      "name": "lilghtisworking_but_intermediate_distance_blackout",
+      "x": 446.91305713932434,
+      "y": 64.0,
+      "z": 83.07135345507196,
+      "yaw": 7.8010254,
+      "pitch": 34.64996,
+      "timeOfDay": 17433,
+      "weather": "clear",
+      "rtx": true,
+      "proceduralClouds": false
+    }
+  ]
+}
