@@ -46,11 +46,11 @@ public final class DirectQuadWriter {
     private static final float DECAL_OVERLAP_EPSILON = 1.0E-4f;
 
     /**
-     * Worst-case quads per 16x16x16 section.  4096 blocks x 6 faces = 24576.
-     * Used as the growth ceiling for bucket buffers, not for initial sizing.
+     * Growth ceiling for bucket buffers, rounded down to a whole vertex. Models
+     * from resource packs can emit far more than six quads per block, so a
+     * face-count bound would be exceeded and overflow the buffer.
      */
-    private static final int MAX_SECTION_QUADS = 24576;
-    private static final int MAX_VERT_BUF_SIZE = MAX_SECTION_QUADS * 4 * STRIDE;
+    private static final int MAX_VERT_BUF_SIZE = (Integer.MAX_VALUE - 8) / STRIDE * STRIDE;
     /** Initial bucket capacity: 128 quads keeps small section buckets compact. */
     private static final int INITIAL_QUADS    = 128;
     private static final int INITIAL_VERT_SIZE = INITIAL_QUADS * 4 * STRIDE;       // 32 KB
@@ -131,11 +131,14 @@ public final class DirectQuadWriter {
 
         private void ensureVertexCapacity(int requiredBytes) {
             if (requiredBytes <= vertices.capacity()) return;
+            if (requiredBytes < 0 || requiredBytes > MAX_VERT_BUF_SIZE) {
+                throw new IllegalStateException("Bucket '" + key + "' exceeds the maximum vertex buffer size");
+            }
             int oldCap = vertices.capacity();
-            int newCap = oldCap;
+            long newCap = oldCap;
             while (newCap < requiredBytes) newCap *= 2;
             if (newCap > MAX_VERT_BUF_SIZE) newCap = MAX_VERT_BUF_SIZE;
-            ByteBuffer grown = ByteBuffer.allocate(newCap).order(ByteOrder.LITTLE_ENDIAN);
+            ByteBuffer grown = ByteBuffer.allocate((int) newCap).order(ByteOrder.LITTLE_ENDIAN);
             ByteBuffer src = vertices.duplicate().order(ByteOrder.LITTLE_ENDIAN);
             src.position(0).limit(vertexCount * STRIDE);
             grown.put(src);
